@@ -1,0 +1,6 @@
+# save and execute command "lesskey -o ~/.less .lesskey"
+# then you can find ~/.less
+
+h left-scroll
+l right-scroll
+
