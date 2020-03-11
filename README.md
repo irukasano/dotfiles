@@ -1,5 +1,10 @@
 # dotfiles
 
+## update lesskey
+
+    $ lesskey ~/dotfiles/.lesskey
+    $ ls ~/.less
+
 ## install grcat
 
     $ yum install python3
