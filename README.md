@@ -22,8 +22,8 @@
     $ ./configure  --prefix=/usr/local
     $ make
     $ make altinstall
-    $ ln -s /usr/bin/python3.8 /usr/bin/python3
-    $ ln -s /usr/bin/pip3.8 /usr/bin/pip3
+    $ ln -s /usr/local/bin/python3.8 /usr/bin/python3
+    $ ln -s /usr/local/bin/pip3.8 /usr/bin/pip3
 
 
 
