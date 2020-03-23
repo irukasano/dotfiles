@@ -26,5 +26,14 @@
     $ ln -s /usr/local/bin/pip3.8 /usr/bin/pip3
 
 
+## install pandoc
 
+    $ yum install pandoc
+
+
+## add LESSOPEN, LESSCLOSE
+
+    <~/.config/fish/config.fish>
+    set LESSOPEN "~/dotfiles/lessopen.sh %s"
+    set LESSCLOSE "~/dotfiles/lessclose.sh %s %s"
 
