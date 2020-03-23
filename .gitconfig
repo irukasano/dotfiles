@@ -1,0 +1,12 @@
+[user]
+	name = sano
+	email = sano@iruka-system.co.jp
+[credential]
+    helper = cache --timeout=21600
+[core]
+    quotepath = false
+    safecrlf = true
+    autoCRLF = false
+[color]
+    diff = always
+
