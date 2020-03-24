@@ -30,6 +30,10 @@
 
     $ yum install pandoc
 
+    or
+
+    $ yum install --enablerepo=epel pandoc
+
 
 ## add LESSOPEN, LESSCLOSE
 
