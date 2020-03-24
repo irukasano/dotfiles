@@ -34,10 +34,14 @@
 
     $ yum install --enablerepo=epel pandoc
 
+## install source-highlight
+
+    $ yum install --enablerepo=epel source-highlight
 
 ## add LESSOPEN, LESSCLOSE
 
     <~/.config/fish/config.fish>
-    set LESSOPEN "~/dotfiles/lessopen.sh %s"
-    set LESSCLOSE "~/dotfiles/lessclose.sh %s %s"
+    set -x LESS "-R"
+    set -x LESSOPEN "||/usr/bin/lesspipe.sh %s"
+    set -x LESSCLOSE "~/dotfiles/lessclose.sh %s %s"
 
