@@ -13,7 +13,7 @@
     $ cd grc-1.11.3
     $ sudo ./install.sh
 
-※ただし CentOs6 の場合、python3 はインストールできないので以下の手順でインストールする
+※ただし CentOS6 の場合、python3 は以下の手順でインストールする
 
     $ curl -s https://www.python.org/downloads/source/ | grep -i latest
     $ wget https://www.python.org/ftp/python/3.8.0/Python-3.8.0.tar.xz
