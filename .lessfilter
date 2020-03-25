@@ -4,7 +4,14 @@ case "$1" in
   *.md)
     #pandoc -s -f markdown -t man "$1" | man -l > /tmp/less.$$
     #pandoc -s -f markdown -t man "$1" | groff -D utf8 -T utf8 -man > /tmp/less.$$ 2>/dev/null
-    pandoc -s -f markdown -t man --highlight-style=tango -V header="$1" -V section="$(basename $1)" "$1" | groff -D utf8 -T utf8 -man
+    #pandoc -s -f markdown -t man --highlight-style=tango -V header="$1" -V section="$(basename $1)" "$1" | groff -D utf8 -T utf8 -man
+    r=0
+    output=$(echo a|groff -D utf8 -T utf8 -man) || r=$?
+    if [ ! "$r" = "0"]; then
+      pandoc -s -f markdown -t man --highlight-style=tango -V header="$1" -V section="$(basename $1)" "$1" | groff -D utf8 -T utf8 -man 
+    else
+      pandoc -s -f markdown -t man --highlight-style=tango -V header="$1" -V section="$(basename $1)" "$1" | groff -T utf8 -man 
+    fi
     ;;
   *.php|*.ctp|*.sql|*.perl|*.go|*.py|*.python|*.html|*.rb|*.xml|*.css|*.sh|*.csh|*.bash|*.json|*.js)
     src-hilite-lesspipe.sh "$1"

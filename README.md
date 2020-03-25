@@ -45,3 +45,22 @@
     set -x LESSOPEN "||/usr/bin/lesspipe.sh %s"
     set -x LESSCLOSE "~/dotfiles/lessclose.sh %s %s"
 
+## もしLESSの色付け整形がうまくいかない場合
+
+    とくにCentOS6ならlessバージョンが古いので以下パッチをあてる
+
+    </usr/bin/lesspipe.sh>
+
+    ```diff
+    36a37,44
+    > # Allow for user defined filters
+    > if [ -x ~/.lessfilter ]; then
+    >         ~/.lessfilter "$1"
+    >         if [ $? -eq 0 ]; then
+    >                 exit 0
+    >         fi
+    > fi
+    >
+    ```
+
+
