@@ -7,6 +7,7 @@
     quotepath = false
     safecrlf = true
     autoCRLF = false
+    editor = vim
 [color]
     diff = always
 
