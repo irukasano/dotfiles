@@ -5,6 +5,10 @@
     $ lesskey ~/dotfiles/.lesskey
     $ ls ~/.less
 
+## copy dotfiles
+
+    $ cp -p .gitconfig .grcat.mysql .lessfilter .lesskey .my.cnf ../
+
 ## install grcat
 
     $ yum install python3
