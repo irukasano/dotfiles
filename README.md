@@ -7,7 +7,8 @@
 
 ## copy dotfiles
 
-    $ cp -p .gitconfig .grcat.mysql .lessfilter .lesskey .my.cnf ../
+    $ cd ~/dotfiles
+    $ cp -p .gitconfig .grcat.mysql .lessfilter .my.cnf ../
 
 ## install grcat
 
