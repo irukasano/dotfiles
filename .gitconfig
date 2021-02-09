@@ -10,4 +10,12 @@
     editor = vim
 [color]
     diff = always
+	status = always
+	branch = always
 
+[http]
+	sslVerify = false
+[pull]
+	rebase = false
+[push]
+	default = simple
