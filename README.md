@@ -7,6 +7,10 @@
 
 ## copy dotfiles
 
+    $ ls ~/dotfiles/.gitconfig ~/.dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.my.cnf ~/dotfiles/.agignore | xargs -I@ sh -c 'ln -s @ ~/`basename @`'
+
+    or
+
     $ cd ~/dotfiles
     $ cp -p .gitconfig .grcat.mysql .lessfilter .my.cnf .agignore ../
 
