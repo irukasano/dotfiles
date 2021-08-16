@@ -12,10 +12,15 @@
     diff = always
 	status = always
 	branch = always
-
 [http]
 	sslVerify = false
 [pull]
 	rebase = false
 [push]
 	default = simple
+    followTags = true
+[alias]
+    glog = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
+[status]
+    showUntrackedFiles = all
+
