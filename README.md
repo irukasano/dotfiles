@@ -18,7 +18,7 @@
 ## install grcat
 
     $ yum install python3
-    $ wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.11.3.orig.tar.gz
+    $ wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.12.orig.tar.gz
     $ tar xzf grc_1.11.3.orig.tar.gz
     $ cd grc-1.11.3
     $ sudo ./install.sh

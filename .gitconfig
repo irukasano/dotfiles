@@ -5,10 +5,10 @@
     helper = cache --timeout=21600
 [core]
     quotepath = false
-	safecrlf = false
-	autocrlf = false
+    safecrlf = false
+    autocrlf = false
     editor = vim
-	filemode = false
+    filemode = false
 [color]
     diff = always
     status = always
@@ -22,7 +22,7 @@
     followTags = true
 [alias]
     # show git log one line
-    glog = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cr) %C(bold blue)<%an>%Creset'
+    glog = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cd) %C(bold blue)<%an>%Creset'
 
     # show Modify/Add/Delete on some day(arg1 = yyyy-mm-dd)
     clog = "!f(){ git diff --stat `git log --pretty=format:'%H' --before "$1T23:59:59+09:00" --after "$1T00:00:00+09:00" | tail -1`^..`git log --pretty=format:'%H' --before "$1T23:59:59+09:00" --after "$1T00:00:00+09:00" | head -1`;};f"
