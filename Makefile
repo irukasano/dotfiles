@@ -32,7 +32,7 @@ fish:
 	sudo $(YUM) install -y fish
 
 fisherman:
-	fish -c "curl -Lo ~/.config/fish/functions/fisher.fish --create-dirs https://git.io/fisher"
+	fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
 
 fzf:
 	fish -c "fisher install jethrokuan/fzf"
