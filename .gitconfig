@@ -1,24 +1,25 @@
 [user]
-	name = sano
-	email = sano@iruka-system.co.jp
+    name = sano
+    email = sano@iruka-system.co.jp
 [credential]
     helper = cache --timeout=21600
 [core]
     quotepath = false
-    safecrlf = true
-    autoCRLF = false
+    safecrlf = false
+    autocrlf = false
     editor = vim
+    filemode = false
 [color]
     diff = always
-	status = always
-	branch = always
+    status = always
+    branch = always
 [http]
-	sslVerify = false
+    sslVerify = false
 [pull]
-	rebase = false
+    rebase = false
 [push]
-	default = matching
-    #followTags = true
+    default = simple
+    followTags = true
 [alias]
     # show git log one line
     glog = log --graph --pretty=format:'%Cred%h%Creset -%C(yellow)%d%Creset %s %Cgreen(%cd) %C(bold blue)<%an>%Creset'
