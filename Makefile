@@ -23,7 +23,7 @@ source-highlight:
 
 dotfiles-repo:
 	lesskey ~/dotfiles/.lesskey
-	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore | xargs -I@ sh -c 'ln -s @ ~/`basename @`'
+	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
 	cp -p ~/dotfiles/.my.cnf ~/
 
 fish-all: fish fisherman fzf fish-repo
