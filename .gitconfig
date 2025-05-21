@@ -26,6 +26,9 @@
 
     # show Modify/Add/Delete on some day(arg1 = yyyy-mm-dd)
     clog = "!f(){ git diff --stat `git log --pretty=format:'%H' --before "$1T23:59:59+09:00" --after "$1T00:00:00+09:00" | tail -1`^..`git log --pretty=format:'%H' --before "$1T23:59:59+09:00" --after "$1T00:00:00+09:00" | head -1`;};f"
+
+    # unstage
+    unstage = "restore --staged"
 [status]
     showUntrackedFiles = all
 
