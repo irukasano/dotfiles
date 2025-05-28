@@ -1,6 +1,16 @@
 #!/bin/bash
 set -e
 
+if [ -f .git/MERGE_MSG ] || \
+   [ -f .git/REVERT_MSG ] || \
+   [ -f .git/CHERRY_PICK_MSG ] || \
+   [[ "$@" == *"--amend"* ]]; then
+  echo "🛑 特別なGit操作中のため、テンプレートは使用しません"
+  git commit "$@"
+  exit 0
+fi
+
+
 TEMPLATE=$(mktemp)
 
 # 0. 空行を2行挿入
