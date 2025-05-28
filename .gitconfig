@@ -29,6 +29,10 @@
 
     # unstage
     unstage = "restore --staged"
+
+    # git comment with diff
+    commit-diff = "!~/dotfiles/bin/git-commit-template.sh"
+
 [status]
     showUntrackedFiles = all
 
