@@ -42,7 +42,14 @@ EOF
 } >> "$TEMPLATE"
 
 # 3. コミットメッセージエディタを起動
-git commit -t "$TEMPLATE"
+if [[ "$GIT_EDITOR" == *"code"* ]]; then
+  git commit -t "$TEMPLATE"
+else
+  echo -e "\n📝 エディタが code 以外のため、テンプレート内容のみ表示します："
+  echo "----------------------------------------"
+  cat "$TEMPLATE"
+  echo "----------------------------------------"
+fi
 
 # 4. テンプレートファイル削除
 rm -f "$TEMPLATE"
