@@ -1,6 +1,6 @@
 YUM = dnf
 
-all: init dotfiles-all fish-all nvim-all
+all: init dotfiles-all fish-all nvim-all osc52
 
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 
@@ -55,4 +55,9 @@ nvim-repo:
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
+osc52:
+	sudo mkdir -p /usr/local/src
+	sudo curl -L https://raw.githubusercontent.com/libapps/libapps-mirror/main/hterm/etc/osc52.sh -o /usr/local/src/osc52.sh
+	sudo chmod +x /usr/local/src/osc52.sh
+	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
 
