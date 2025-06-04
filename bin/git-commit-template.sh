@@ -10,11 +10,14 @@ if [ -f .git/MERGE_MSG ] || \
   exit 0
 fi
 
+if git diff --cached --quiet; then
+  echo "💡 コミット対象の変更がありません"
+  git status
+  exit 0
+fi
 
-TEMPLATE=$(mktemp)
-
-# 0. 空行を2行挿入
-echo -e "\n\n" > "$TEMPLATE"
+TEMPLATE=$(mktemp).base
+COMMIT_MSG=$(mktemp).commit
 
 # 1. コミットメッセージのガイドライン
 cat <<'EOF' >> "$TEMPLATE"
@@ -29,29 +32,50 @@ cat <<'EOF' >> "$TEMPLATE"
 #
 #‼️  注意事項
 # * プレフィクスは refs または fixes
-# * 要約はプレフィックスのあと半角スペース１とあけて 36 文字以内
+# * 要約はプレフィクスのあと半角スペース１とあけて 36 文字以内
 # * 箇条書きは"*"ではじめ、60文字毎に改行する
 #
 EOF
 
-# 2. ステージされた git diff をコメント付きで追加（エスケープ除去）
+# 2. ステージされた git diff をコメント付きで追加
 {
   echo ""
   echo "# --- git diff (staged) ---"
   git diff --cached --no-color | sed 's/^/# /'
 } >> "$TEMPLATE"
 
-# 3. コミットメッセージエディタを起動
+# 3. GIT_EDITOR に応じて分岐
 if [[ "$GIT_EDITOR" == *"code"* ]]; then
-  git commit -t "$TEMPLATE"
+  {
+    echo "refs"
+    echo ""
+    cat "$TEMPLATE"
+  } > "$COMMIT_MSG"
+  git commit -t "$COMMIT_MSG"
 else
-  echo -e "\n📝 エディタが code 以外のため、テンプレート内容のみ表示します："
-  echo "----------------------------------------"
-  cat "$TEMPLATE"
-  echo "----------------------------------------"
+  # テンプレートを加工：先頭に文言と ```、末尾に ``` を追加
+  {
+    echo "以下の内容をもとに日本語でコミットメッセージを作成してください"
+    echo ""
+    echo '```'
+    cat "$TEMPLATE"
+    echo '```'
+  } > $COMMIT_MSG
+
+  if command -v osc52.sh >/dev/null 2>&1 && [[ -x "$(command -v osc52.sh)" ]]; then
+    cat "$COMMIT_MSG" | osc52.sh
+
+    COMMENT_MSG=$(mktemp).comment
+    echo "# クリップボードを ChatGPT に貼り付けしてコミットメッセージを取得してください" > "$COMMENT_MSG"
+    git commit -t "$COMMENT_MSG"
+    rm -f "$COMMENT_MSG"
+
+  else
+    cat "$COMMIT_MSG"
+  fi
 fi
 
 # 4. テンプレートファイル削除
 rm -f "$TEMPLATE"
-
+rm -f "$COMMIT_MSG"
 
