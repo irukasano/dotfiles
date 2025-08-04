@@ -62,6 +62,8 @@ EOF
   {
     echo "$GEMINI_MSG"
     echo ""
+    echo "by gemini : $(date +%s)"
+    echo ""
     cat "$TEMPLATE"
   } > "$COMMIT_MSG"
 
