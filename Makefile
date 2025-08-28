@@ -1,6 +1,6 @@
-YUM = dnf
+YUM = apt
 
-all: init dotfiles-all fish-all nvim-all osc52
+all: init dotfiles-all fish-all nvim-all tmux osc52
 
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 
@@ -23,7 +23,7 @@ source-highlight:
 
 dotfiles-repo:
 	lesskey ~/dotfiles/.lesskey
-	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
+	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
 	cp -p ~/dotfiles/.my.cnf ~/
 
 fish-all: fish fisherman fzf fish-repo
@@ -54,6 +54,11 @@ nvim-repo:
 	git clone https://github.com/irukasano/init.vim ~/.config/nvim
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
+
+tmux:
+	sudo $(YUM) install -y tmux
+	mkdir -p ~/.tmux
+	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 
 osc52:
 	sudo mkdir -p /usr/local/src
