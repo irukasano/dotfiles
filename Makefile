@@ -1,4 +1,4 @@
-YUM = apt
+YUM = dnf
 
 all: init dotfiles-all fish-all nvim-all tmux osc52
 
@@ -59,6 +59,7 @@ tmux:
 	sudo $(YUM) install -y tmux
 	mkdir -p ~/.tmux
 	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
+	tmux source ~/.tmux.conf
 
 osc52:
 	sudo mkdir -p /usr/local/src
