@@ -1,5 +1,10 @@
 YUM = dnf
 
+NVM_DIR             := $(HOME)/.nvm
+NVM_SH              := $(NVM_DIR)/nvm.sh
+NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh
+
+
 all: init dotfiles-all fish-all nvim-all tmux osc52
 
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
@@ -46,14 +51,32 @@ fish-repo:
 
 nvim-all: nodejs nvim-repo
 
-nodejs:
-	sudo $(YUM) install -y nodejs npm
+nodejs-init:
+	@if [ ! -d "$(NVM_DIR)" ]; then \
+			curl -o- $(NVM_URL) | bash; \
+	fi
+
+nodejs: nodejs-init
+	@echo "Installing latest LTS version."
+	@export NVM_DIR="$(NVM_DIR)"; \
+	[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
+	nvm install --lts; \
+	nvm alias default lts
 
 nvim-repo:
 	mkdir -p ~/.vim
 	git clone https://github.com/irukasano/init.vim ~/.config/nvim
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
+
+codex:nodejs
+	sudo npm install -g @openai/codex
+	# Ensure Codex config exists and append notify setting if missing
+	mkdir -p ~/.codex
+	sh -c 'CONFIG_FILE="$$HOME/.codex/config.toml"; \
+	  touch "$$CONFIG_FILE"; \
+	  grep -qxF "notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]" "$$CONFIG_FILE" || \
+	  echo "notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]" >> "$$CONFIG_FILE"'
 
 tmux:
 	sudo $(YUM) install -y tmux
@@ -66,4 +89,3 @@ osc52:
 	sudo curl -L https://raw.githubusercontent.com/libapps/libapps-mirror/main/hterm/etc/osc52.sh -o /usr/local/src/osc52.sh
 	sudo chmod +x /usr/local/src/osc52.sh
 	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
-
