@@ -23,30 +23,22 @@ log "pwd: $(pwd)"
 log "user: ${USER:-unknown} host: ${HOSTNAME:-unknown}"
 log "args: [$#] -> $*"
 
-# Read STDIN fully (may be empty if caller passes args instead)
-payload="$(cat)"
-log "stdin_bytes: ${#payload}"
-if [ -n "$payload" ]; then
-  source_desc="stdin"
-  # Log the first few KB to avoid runaway logs
-  max=4096
-  if [ ${#payload} -le $max ]; then
-    log "stdin_sample: $payload"
-  else
-    log "stdin_sample: ${payload:0:$max} ... (truncated)"
+# Accept JSON from argument only to avoid STDIN block
+if [ $# -ge 1 ]; then
+  payload="$1"
+  source_desc="args"
+  log "payload_source: $source_desc bytes=${#payload}"
+  # Warn if multiple args were passed (likely missing quotes)
+  if [ $# -gt 1 ]; then
+    log "warn: multiple arguments received (#=$#); using only first"
   fi
 else
-  log "stdin_empty"
-  # Fallback: if args exist, treat them as payload
-  if [ $# -gt 0 ]; then
-    payload="$*"
-    source_desc="args"
-    log "args_used_as_payload bytes=${#payload}"
-  else
-    source_desc="none"
-  fi
+  payload=""
+  source_desc="none"
+  log "payload_source: $source_desc (no args)"
+  # No payload provided; do nothing but keep Codex running
+  exit 0
 fi
-log "payload_source: $source_desc"
 
 # Try to open TCP connection; on failure, log and exit 0 to avoid breaking Codex
 if exec 3>/dev/tcp/127.0.0.1/53245; then
