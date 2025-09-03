@@ -27,6 +27,7 @@ log "args: [$#] -> $*"
 payload="$(cat)"
 log "stdin_bytes: ${#payload}"
 if [ -n "$payload" ]; then
+  source_desc="stdin"
   # Log the first few KB to avoid runaway logs
   max=4096
   if [ ${#payload} -le $max ]; then
@@ -36,7 +37,16 @@ if [ -n "$payload" ]; then
   fi
 else
   log "stdin_empty"
+  # Fallback: if args exist, treat them as payload
+  if [ $# -gt 0 ]; then
+    payload="$*"
+    source_desc="args"
+    log "args_used_as_payload bytes=${#payload}"
+  else
+    source_desc="none"
+  fi
 fi
+log "payload_source: $source_desc"
 
 # Try to open TCP connection; on failure, log and exit 0 to avoid breaking Codex
 if exec 3>/dev/tcp/127.0.0.1/53245; then
