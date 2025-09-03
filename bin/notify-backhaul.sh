@@ -3,9 +3,53 @@
 # （RemoteForward によりローカルPCの 127.0.0.1:53245 へ届く）
 set -euo pipefail
 
-payload="$(cat)"
-# トンネル未確立でも失敗でCodexを止めない
-exec 3>/dev/tcp/127.0.0.1/53245 || exit 0
-printf '%s\n' "$payload" >&3 || true
-exec 3>&-
+# --- logging setup (non-fatal) ---
+LOG_DIR="${XDG_CACHE_HOME:-"$HOME/.cache"}/codex"
+LOG_FILE="$LOG_DIR/notify-backhaul.log"
+{
+  mkdir -p "$LOG_DIR"
+} || true
 
+log() {
+  # Avoid aborting on logging errors
+  {
+    printf '[%s] %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" "$*" >>"$LOG_FILE"
+  } || true
+}
+
+log "==== notify-backhaul.sh invoked ===="
+log "script: $0"
+log "pwd: $(pwd)"
+log "user: ${USER:-unknown} host: ${HOSTNAME:-unknown}"
+log "args: [$#] -> $*"
+
+# Read STDIN fully (may be empty if caller passes args instead)
+payload="$(cat)"
+log "stdin_bytes: ${#payload}"
+if [ -n "$payload" ]; then
+  # Log the first few KB to avoid runaway logs
+  max=4096
+  if [ ${#payload} -le $max ]; then
+    log "stdin_sample: $payload"
+  else
+    log "stdin_sample: ${payload:0:$max} ... (truncated)"
+  fi
+else
+  log "stdin_empty"
+fi
+
+# Try to open TCP connection; on failure, log and exit 0 to avoid breaking Codex
+if exec 3>/dev/tcp/127.0.0.1/53245; then
+  log "tcp_connect: ok -> 127.0.0.1:53245"
+else
+  log "tcp_connect: failed -> 127.0.0.1:53245 (tunnel not ready?)"
+  exit 0
+fi
+
+if printf '%s\n' "$payload" >&3; then
+  log "send: ok bytes=${#payload}"
+else
+  log "send: failed"
+fi
+exec 3>&-
+log "stream: closed"
