@@ -1,4 +1,4 @@
-YUM = dnf
+YUM = apt
 
 NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
@@ -48,6 +48,11 @@ fish-repo:
 	cd ~/.config; mv fish fish.bak
 	git clone https://github.com/irukasano/config.fish.git ~/.config/fish
 	cd ~/.config/fish; git submodule update --init
+
+fish-nvm: nodejs
+	fish -c "fisher install jorgebucaran/nvm.fish"
+	fish -c "nvm install lts"
+	fish -c "nvm use lts"
 
 nvim-all: nodejs nvim-repo
 
