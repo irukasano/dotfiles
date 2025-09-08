@@ -4,12 +4,16 @@ NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
 NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh
 
+.PHONY: init python3 grcat pandoc source-highlight dotfiles-repo \
+	ag fd gh fish fisherman fzf fish-repo fish-nvm \
+	nodejs-init nodejs nvim-repo codex tmux osc52
 
-all: init dotfiles-all fish-all nvim-all tmux osc52
+all: init dotfiles-all fish-all nvim-all ag fd gh tmux osc52
 
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 
 init:
+	sudo $(YUM) update
 	sudo $(YUM) install -y tar
 
 python3:
@@ -30,6 +34,15 @@ dotfiles-repo:
 	lesskey ~/dotfiles/.lesskey
 	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
 	cp -p ~/dotfiles/.my.cnf ~/
+
+ag:
+	sudo $(YUM) install -y silversearcher-ag
+
+fd:
+	sudo $(YUM) install -y fd-find
+
+gh:
+	sudo apt-get install -y gh
 
 fish-all: fish fisherman fzf fish-repo
 
