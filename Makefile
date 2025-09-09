@@ -56,6 +56,7 @@ fzf:
 	fish -c "fisher install jethrokuan/fzf"
 	git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 	~/.fzf/install
+	sudo ln -sf ~/.fzf/bin/fzf /usr/local/bin/fzf
 
 fish-repo:
 	cd ~/.config; mv fish fish.bak
