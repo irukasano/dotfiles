@@ -44,9 +44,10 @@ EOF
   git diff --cached --no-color | sed 's/^/# /'
 } >> "$TEMPLATE"
 
-# 3. gemini があればコミットメッセージを自動生成
-if command -v gemini >/dev/null 2>&1; then
+# 3. codex があればコミットメッセージを自動生成
+if command -v codex >/dev/null 2>&1; then
   PROMPT=$(mktemp).prompt
+  OUTPUT_LAST=$(mktemp).codex
   cat <<'EOF' > "$PROMPT"
 以下の内容をもとに日本語でコミットメッセージを作成してください
 作成内容をそのままコミットメッセージにできるようバックスラッシュ等でくくらず出力してください
@@ -54,22 +55,54 @@ if command -v gemini >/dev/null 2>&1; then
 EOF
   cat "$TEMPLATE" >> "$PROMPT"
 
-  # gemini でコミットメッセージを生成
-  GEMINI_MSG=$(gemini -p -m gemini-2.5-flash < "$PROMPT" | tail -n +2)
-  rm -f "$PROMPT"
+  # codex でコミットメッセージを生成（標準出力は捨て、最終メッセージのみファイルに保存）
+  if codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1; then
+    CODEX_MSG=$(cat "$OUTPUT_LAST")
 
-  # COMMIT_MSG ファイルを作成
-  {
-    echo "$GEMINI_MSG"
-    echo ""
-    echo "by gemini : $(date +%s)"
-    echo ""
-    cat "$TEMPLATE"
-  } > "$COMMIT_MSG"
+    # COMMIT_MSG ファイルを作成
+    {
+      echo "$CODEX_MSG"
+      echo ""
+      echo "by codex : $(date +%s)"
+      echo ""
+      cat "$TEMPLATE"
+    } > "$COMMIT_MSG"
 
-  git commit -t "$COMMIT_MSG"
+    git commit -t "$COMMIT_MSG"
+  else
+    # codex 実行に失敗した場合は手動フローへフォールバック
+    if [[ "$GIT_EDITOR" == *"code"* ]]; then
+      {
+        echo "refs"
+        echo ""
+        cat "$TEMPLATE"
+      } > "$COMMIT_MSG"
+      git commit -t "$COMMIT_MSG"
+    else
+      {
+        echo "以下の内容をもとに日本語でコミットメッセージを作成してください"
+        echo ""
+        echo '```'
+        cat "$TEMPLATE"
+        echo '```'
+      } > $COMMIT_MSG
 
-# 4. gemini がなければ GIT_EDITOR に応じて分岐
+      if command -v osc52.sh >/dev/null 2>&1 && [[ -x "$(command -v osc52.sh)" ]]; then
+        cat "$COMMIT_MSG" | osc52.sh
+
+        COMMENT_MSG=$(mktemp).comment
+        echo "# クリップボードを ChatGPT に貼り付けしてコミットメッセージを取得してください" > "$COMMENT_MSG"
+        git commit -t "$COMMENT_MSG"
+        rm -f "$COMMENT_MSG"
+      else
+        cat "$COMMIT_MSG"
+      fi
+    fi
+  fi
+
+  rm -f "$PROMPT" "$OUTPUT_LAST"
+
+# 4. codex がなければ GIT_EDITOR に応じて分岐
 else
   if [[ "$GIT_EDITOR" == *"code"* ]]; then
     {
@@ -106,4 +139,3 @@ fi
 # 5. テンプレートファイル削除
 rm -f "$TEMPLATE"
 rm -f "$COMMIT_MSG"
-
