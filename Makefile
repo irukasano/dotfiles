@@ -89,13 +89,18 @@ nvim-repo:
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
 codex:nodejs
-	sudo npm install -g @openai/codex
-	# Ensure Codex config exists and append notify setting if missing
-	mkdir -p ~/.codex
-	sh -c 'CONFIG_FILE="$$HOME/.codex/config.toml"; \
-	  touch "$$CONFIG_FILE"; \
-	  grep -qxF "notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]" "$$CONFIG_FILE" || \
-	  echo "notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]" >> "$$CONFIG_FILE"'
+	@sudo npm install -g @openai/codex
+	@mkdir -p ~/.codex
+	@sh -c '\
+	CONFIG_FILE="$$HOME/.codex/config.toml"; \
+	NOTIFY_LINE="notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]"; \
+	touch "$$CONFIG_FILE"; \
+	if ! grep -qxF "$$NOTIFY_LINE" "$$CONFIG_FILE"; then \
+		TMP_FILE=$$(mktemp); \
+		echo "$$NOTIFY_LINE" > "$$TMP_FILE"; \
+		cat "$$CONFIG_FILE" >> "$$TMP_FILE"; \
+		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
+	fi'
 
 tmux:
 	sudo $(YUM) install -y tmux
