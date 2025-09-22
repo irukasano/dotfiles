@@ -102,6 +102,9 @@ codex:nodejs
 		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
 	fi'
 
+uv:
+	curl -LsSf https://astral.sh/uv/install.sh | sh
+
 tmux:
 	sudo $(YUM) install -y tmux
 	mkdir -p ~/.tmux
