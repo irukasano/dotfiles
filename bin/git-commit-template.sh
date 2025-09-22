@@ -44,41 +44,43 @@ EOF
   git diff --cached --no-color | sed 's/^/# /'
 } >> "$TEMPLATE"
 
-# 3. codex があればコミットメッセージを自動生成
-if command -v codex >/dev/null 2>&1; then
-  PROMPT=$(mktemp).prompt
-  OUTPUT_LAST=$(mktemp).codex
-  cat <<'EOF' > "$PROMPT"
+# 3. まず GIT_EDITOR が "code" を含む場合を最初に処理
+if [[ "$GIT_EDITOR" == *"code"* ]]; then
+  {
+    echo "refs"
+    echo ""
+    cat "$TEMPLATE"
+  } > "$COMMIT_MSG"
+  git commit -t "$COMMIT_MSG"
+
+else
+  # 4. 非 code エディタの場合は codex -> osc52 -> cat の順で処理
+  if command -v codex >/dev/null 2>&1; then
+    PROMPT=$(mktemp).prompt
+    OUTPUT_LAST=$(mktemp).codex
+    cat <<'EOF' > "$PROMPT"
 以下の内容をもとに日本語でコミットメッセージを作成してください
 作成内容をそのままコミットメッセージにできるようバックスラッシュ等でくくらず出力してください
 
 EOF
-  cat "$TEMPLATE" >> "$PROMPT"
+    cat "$TEMPLATE" >> "$PROMPT"
 
-  # codex でコミットメッセージを生成（標準出力は捨て、最終メッセージのみファイルに保存）
-  if codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1; then
-    CODEX_MSG=$(cat "$OUTPUT_LAST")
+    # codex でコミットメッセージを生成（標準出力は捨て、最終メッセージのみファイルに保存）
+    if codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1; then
+      CODEX_MSG=$(cat "$OUTPUT_LAST")
 
-    # COMMIT_MSG ファイルを作成
-    {
-      echo "$CODEX_MSG"
-      echo ""
-      echo "by codex : $(date +%s)"
-      echo ""
-      cat "$TEMPLATE"
-    } > "$COMMIT_MSG"
-
-    git commit -t "$COMMIT_MSG"
-  else
-    # codex 実行に失敗した場合は手動フローへフォールバック
-    if [[ "$GIT_EDITOR" == *"code"* ]]; then
+      # COMMIT_MSG ファイルを作成
       {
-        echo "refs"
+        echo "$CODEX_MSG"
+        echo ""
+        echo "by codex : $(date +%s)"
         echo ""
         cat "$TEMPLATE"
       } > "$COMMIT_MSG"
+
       git commit -t "$COMMIT_MSG"
     else
+      # codex 実行に失敗した場合は osc52 -> cat へフォールバック
       {
         echo "以下の内容をもとに日本語でコミットメッセージを作成してください"
         echo ""
@@ -98,21 +100,10 @@ EOF
         cat "$COMMIT_MSG"
       fi
     fi
-  fi
 
-  rm -f "$PROMPT" "$OUTPUT_LAST"
-
-# 4. codex がなければ GIT_EDITOR に応じて分岐
-else
-  if [[ "$GIT_EDITOR" == *"code"* ]]; then
-    {
-      echo "refs"
-      echo ""
-      cat "$TEMPLATE"
-    } > "$COMMIT_MSG"
-    git commit -t "$COMMIT_MSG"
+    rm -f "$PROMPT" "$OUTPUT_LAST"
   else
-    # テンプレートを加工：先頭に文言と ```、末尾に ``` を追加
+    # codex がなければ osc52 -> cat の順
     {
       echo "以下の内容をもとに日本語でコミットメッセージを作成してください"
       echo ""
@@ -128,7 +119,6 @@ else
       echo "# クリップボードを ChatGPT に貼り付けしてコミットメッセージを取得してください" > "$COMMENT_MSG"
       git commit -t "$COMMENT_MSG"
       rm -f "$COMMENT_MSG"
-
     else
       cat "$COMMIT_MSG"
     fi
