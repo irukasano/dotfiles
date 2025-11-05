@@ -66,40 +66,20 @@ EOF
     cat "$TEMPLATE" >> "$PROMPT"
 
     # codex でコミットメッセージを生成（標準出力は捨て、最終メッセージのみファイルに保存）
-    if codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1; then
-      CODEX_MSG=$(cat "$OUTPUT_LAST")
+    codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --skip-git-repo-check --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1 || echo ""
 
-      # COMMIT_MSG ファイルを作成
-      {
-        echo "$CODEX_MSG"
-        echo ""
-        echo "by codex : $(date +%s)"
-        echo ""
-        cat "$TEMPLATE"
-      } > "$COMMIT_MSG"
+    CODEX_MSG=$(cat "$OUTPUT_LAST")
 
-      git commit -t "$COMMIT_MSG"
-    else
-      # codex 実行に失敗した場合は osc52 -> cat へフォールバック
-      {
-        echo "以下の内容をもとに日本語でコミットメッセージを作成してください"
-        echo ""
-        echo '```'
-        cat "$TEMPLATE"
-        echo '```'
-      } > $COMMIT_MSG
+    # COMMIT_MSG ファイルを作成
+    {
+      echo "$CODEX_MSG"
+      echo ""
+      echo "by codex : $(date +%s)"
+      echo ""
+      cat "$TEMPLATE"
+    } > "$COMMIT_MSG"
 
-      if command -v osc52.sh >/dev/null 2>&1 && [[ -x "$(command -v osc52.sh)" ]]; then
-        cat "$COMMIT_MSG" | osc52.sh
-
-        COMMENT_MSG=$(mktemp).comment
-        echo "# クリップボードを ChatGPT に貼り付けしてコミットメッセージを取得してください" > "$COMMENT_MSG"
-        git commit -t "$COMMENT_MSG"
-        rm -f "$COMMENT_MSG"
-      else
-        cat "$COMMIT_MSG"
-      fi
-    fi
+    git commit -t "$COMMIT_MSG"
 
     rm -f "$PROMPT" "$OUTPUT_LAST"
   else
