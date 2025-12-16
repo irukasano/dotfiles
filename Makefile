@@ -1,4 +1,4 @@
-YUM = apt
+YUM = dnf
 
 NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
@@ -8,7 +8,7 @@ NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/inst
 	ag fd gh fish fisherman fzf fish-repo fish-nvm \
 	nodejs-init nodejs nvim-repo codex tmux osc52
 
-all: init dotfiles-all fish-all nvim-all ag fd gh tmux osc52
+all: init dotfiles-all fish-all nvim-all ag fd gh osc52
 
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 
@@ -36,13 +36,14 @@ dotfiles-repo:
 	cp -p ~/dotfiles/.my.cnf ~/
 
 ag:
-	sudo $(YUM) install -y silversearcher-ag
+	#sudo $(YUM) install -y silversearcher-ag
+	sudo $(YUM) install -y ag
 
 fd:
 	sudo $(YUM) install -y fd-find
 
 gh:
-	sudo apt-get install -y gh
+	sudo $(YUM) install -y gh
 
 fish-all: fish fisherman fzf fish-repo
 
