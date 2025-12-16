@@ -81,7 +81,13 @@ nodejs: nodejs-init
 	@export NVM_DIR="$(NVM_DIR)"; \
 	[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
 	nvm install --lts; \
-	#nvm alias default 'lts/*'
+	LTS_VERSION="$$(nvm version --lts)"; \
+	echo "Detected LTS version: $$LTS_VERSION"; \
+	grep -q 'nvm_default_version' $$HOME/.bashrc || { \
+		echo '' >> $$HOME/.bashrc; \
+		echo 'export nvm_default_version="'"$$LTS_VERSION"'"' >> $$HOME/.bashrc; \
+		echo 'nvm use "$$nvm_default_version" >/dev/null 2>&1 || true' >> $$HOME/.bashrc; \
+	}
 
 nvim-repo:
 	mkdir -p ~/.vim
@@ -90,7 +96,7 @@ nvim-repo:
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
 codex:nodejs
-	@sudo npm install -g @openai/codex
+	@npm install -g @openai/codex
 	@mkdir -p ~/.codex
 	@sh -c '\
 	CONFIG_FILE="$$HOME/.codex/config.toml"; \
