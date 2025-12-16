@@ -4,78 +4,94 @@ NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
 NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh
 
-.PHONY: init python3 grcat pandoc source-highlight dotfiles-repo \
-	ag fd gh fish fisherman fzf fish-repo fish-nvm \
-	nodejs-init nodejs nvim-repo codex tmux osc52
-
+.PHONY: all
 all: init dotfiles-all fish-all nvim-all ag fd gh osc52
 
+.PHONY: dotfiles-all
 dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 
+.PHONY: init
 init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar
 
+.PHONY: python3
 python3:
 	sudo $(YUM) install -y python3
 
+.PHONY: grcat
 grcat:
 	sudo wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.12.orig.tar.gz -O /usr/local/src/grc_1.12.orig.tar.gz
 	cd /usr/local/src; sudo tar xzf grc_1.12.orig.tar.gz
 	cd /usr/local/src/grc-1.12; sudo ./install.sh
 
+.PHONY: pandoc
 pandoc:
 	sudo $(YUM) install -y pandoc
 
+.PHONY: source-highlight
 source-highlight:
 	sudo $(YUM) install -y source-highlight
 
+.PHONY: dotfiles-repo
 dotfiles-repo:
 	lesskey ~/dotfiles/.lesskey
 	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
 	cp -p ~/dotfiles/.my.cnf ~/
 
+.PHONY: ag
 ag:
 	#sudo $(YUM) install -y silversearcher-ag
 	sudo $(YUM) install -y ag
 
+.PHONY: fd
 fd:
 	sudo $(YUM) install -y fd-find
 
+.PHONY: gh
 gh:
 	sudo $(YUM) install -y gh
 
+.PHONY: fish-all
 fish-all: fish fisherman fzf fish-repo
 
+.PHONY: fish
 fish:
 	sudo $(YUM) install -y fish
 
+.PHONY: fisherman
 fisherman:
 	fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
 
+.PHONY: fzf
 fzf:
 	fish -c "fisher install jethrokuan/fzf"
 	git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
 	~/.fzf/install
 	sudo ln -sf ~/.fzf/bin/fzf /usr/local/bin/fzf
 
+.PHONY: fish-repo
 fish-repo:
 	cd ~/.config; mv fish fish.bak
 	git clone https://github.com/irukasano/config.fish.git ~/.config/fish
 	cd ~/.config/fish; git submodule update --init
 
+.PHONY: fish-nvm
 fish-nvm: nodejs
 	fish -c "fisher install jorgebucaran/nvm.fish"
 	fish -c "nvm install lts"
 	fish -c "nvm use lts"
 
+.PHONY: nvim-all
 nvim-all: nodejs nvim-repo
 
+.PHONY: nodejs-init
 nodejs-init:
 	@if [ ! -d "$(NVM_DIR)" ]; then \
 			curl -o- $(NVM_URL) | bash; \
 	fi
 
+.PHONY: nodejs
 nodejs: nodejs-init
 	@echo "Installing latest LTS version."
 	@export NVM_DIR="$(NVM_DIR)"; \
@@ -89,12 +105,14 @@ nodejs: nodejs-init
 		echo 'nvm use "$$nvm_default_version" >/dev/null 2>&1 || true' >> $$HOME/.bashrc; \
 	}
 
+.PHONY: nvim-repo
 nvim-repo:
 	mkdir -p ~/.vim
 	git clone https://github.com/irukasano/init.vim ~/.config/nvim
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
+.PHONY: codex
 codex:nodejs
 	@npm install -g @openai/codex
 	@mkdir -p ~/.codex
@@ -109,17 +127,48 @@ codex:nodejs
 		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
 	fi'
 
+.PHONY: uv
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 
+.PHONY: tmux
 tmux:
 	sudo $(YUM) install -y tmux
 	mkdir -p ~/.tmux
 	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 	tmux source ~/.tmux.conf
 
+.PHONY: osc52
 osc52:
 	sudo mkdir -p /usr/local/src
 	sudo curl -L https://raw.githubusercontent.com/libapps/libapps-mirror/main/hterm/etc/osc52.sh -o /usr/local/src/osc52.sh
 	sudo chmod +x /usr/local/src/osc52.sh
 	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
+
+.PHONY: develop
+develop: zellij git-gtr tig codex
+
+.PHONY: zellij
+zellij:
+	sudo mkdir -p /usr/local/src
+	cd /usr/local/src; sudo wget https://github.com/zellij-org/zellij/releases/download/v0.43.1/zellij-no-web-x86_64-unknown-linux-musl.tar.gz
+	cd /usr/local/src; sudo tar xvzf zellij-no-web-x86_64-unknown-linux-musl.tar.gz
+	cd /usr/local/src; sudo mv zellij /usr/local/bin
+	ln -sf "$$HOME/dotfiles/bin/zellij-worktree.sh" $$HOME/bin
+
+.PHONY: git-gtr
+git-gtr:
+	sudo mkdir -p /usr/local/src
+	cd /usr/local/src; sudo git clone https://github.com/coderabbitai/git-worktree-runner.git
+	cd /usr/local/src/git-worktree-runner; sudo ln -s "$$(pwd)/bin/git-gtr" /usr/local/bin/git-gtr
+
+.PHONY: tig
+tig:
+	sudo dnf install xmlto
+	sudo mkdir -p /usr/local/src
+	cd /usr/local/src; sudo git clone https://github.com/jonas/tig.git
+	cd /usr/local/src; sudo chown -R user tig
+	cd /usr/local/src/tig; make
+	cd /usr/local/src/tig; make install
+	cd /usr/local/src/tig; make install-doc
+
