@@ -121,6 +121,29 @@ codex:nodejs
 		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
 	fi'
 
+.PHONY: codex-gh-mcp
+codex-gh-mcp:
+	sudo $(YUM) install -y python3.11 python3.11-pip
+	mkdir -p $(HOME)/mcp
+	if [ ! -d "$(HOME)/mcp/gh-mcp" ]; then \
+		git clone https://github.com/munch-group/gh-mcp.git $(HOME)/mcp/gh-mcp; \
+	else \
+		cd $(HOME)/mcp/gh-mcp && git pull; \
+	fi
+	python3.11 -m pip install --user mcp
+	@mkdir -p ~/.codex
+	@sh -c '\
+	CONFIG_FILE="$$HOME/.codex/config.toml"; \
+	GH_SECTION="[mcp_servers.gh]"; \
+	GH_COMMAND="command = \"python3.11\""; \
+	GH_ARGS="args = [\"$$HOME/mcp/gh-mcp/server.py\"]"; \
+	touch "$$CONFIG_FILE"; \
+	if ! grep -q "^\[mcp_servers\.gh\]" "$$CONFIG_FILE"; then \
+		printf "\n%s\n%s\n%s\n" "$$GH_SECTION" "$$GH_COMMAND" "$$GH_ARGS" >> "$$CONFIG_FILE"; \
+	else \
+		echo "mcp_servers.gh already exists in $$CONFIG_FILE; skipping config append."; \
+	fi'
+
 .PHONY: uv
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -140,7 +163,7 @@ osc52:
 	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
 
 .PHONY: develop
-develop: zellij git-gtr tig codex
+develop: zellij git-gtr tig codex codex-gh-mcp
 
 .PHONY: zellij
 zellij:
@@ -165,4 +188,3 @@ tig:
 	cd /usr/local/src/tig; make
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
-
