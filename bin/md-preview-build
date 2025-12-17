@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   md-preview-build <markdown-file>
+#
+# Output:
+#   /tmp/md-preview-$USER/preview.html
+#   /tmp/md-preview-$USER/github-markdown.css
+
+md_file="${1:-}"
+
+if [[ -z "${md_file}" ]]; then
+  echo "Usage: $(basename "$0") <markdown-file>" >&2
+  exit 1
+fi
+if [[ ! -f "${md_file}" ]]; then
+  echo "Error: file not found: ${md_file}" >&2
+  exit 1
+fi
+
+cache_dir="${HOME}/.cache/md-preview"
+mkdir -p "${cache_dir}"
+
+css_cache="${cache_dir}/github-markdown.css"
+tpl_cache="${cache_dir}/tpl.html"
+
+serve_dir="/tmp/md-preview-${USER}"
+mkdir -p "${serve_dir}"
+
+css_serve="${serve_dir}/github-markdown.css"
+html_serve="${serve_dir}/preview.html"
+
+# Fetch CSS once
+if [[ ! -s "${css_cache}" ]]; then
+  curl -fsSL \
+    https://raw.githubusercontent.com/sindresorhus/github-markdown-css/main/github-markdown.css \
+    -o "${css_cache}"
+fi
+
+# Create template once
+if [[ ! -s "${tpl_cache}" ]]; then
+  cat > "${tpl_cache}" <<'HTML'
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <link rel="stylesheet" href="github-markdown.css">
+  <style>
+    .markdown-body {
+      box-sizing: border-box;
+      min-width: 200px;
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 45px;
+    }
+  </style>
+</head>
+<body>
+  <article class="markdown-body">
+  $body$
+  </article>
+</body>
+</html>
+HTML
+fi
+
+# Ensure CSS is in serve dir
+cp -f "${css_cache}" "${css_serve}"
+
+# Convert
+pandoc "${md_file}" --template="${tpl_cache}" -o "${html_serve}"
+
+echo "Built: ${html_serve}"
+

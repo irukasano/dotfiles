@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Usage:
+#   md-preview-serve [port]
+#
+# Behavior:
+#   - Runs in background
+#   - Logs to /tmp/md-preview-serve.log (append)
+#   - PID file: /tmp/md-preview-serve-$USER.pid
+#   - Serve dir: /tmp/md-preview-$USER
+
+port="${1:-6444}"
+serve_dir="/tmp/md-preview-${USER}"
+log_file="/tmp/md-preview-serve.log"
+pid_file="/tmp/md-preview-serve-${USER}.pid"
+
+mkdir -p "${serve_dir}"
+
+is_running() {
+  local pid="$1"
+  [[ -n "${pid}" ]] && kill -0 "${pid}" 2>/dev/null
+}
+
+if [[ -f "${pid_file}" ]]; then
+  old_pid="$(cat "${pid_file}" 2>/dev/null || true)"
+  if is_running "${old_pid}"; then
+    echo "Already running (pid=${old_pid})."
+    echo "URL: http://localhost:${port}/preview.html"
+    exit 0
+  else
+    rm -f "${pid_file}"
+  fi
+fi
+
+# Start server in background, keep PID
+# Note: do NOT use '&' inside nohup command list; nohup already backgrounds with '&' here.
+(
+  cd "${serve_dir}"
+  nohup python3 -m http.server "${port}" --bind 127.0.0.1 \
+    >> "${log_file}" 2>&1 &
+  echo $! > "${pid_file}"
+)
+
+pid="$(cat "${pid_file}")"
+echo "Started md-preview server (pid=${pid})"
+echo "Serving dir: ${serve_dir}"
+echo "Log:         ${log_file}"
+echo "URL:         http://localhost:${port}/preview.html"
+
