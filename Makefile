@@ -76,12 +76,6 @@ fish-repo:
 	git clone https://github.com/irukasano/config.fish.git ~/.config/fish
 	cd ~/.config/fish; git submodule update --init
 
-.PHONY: fish-nvm
-fish-nvm: nodejs
-	fish -c "fisher install jorgebucaran/nvm.fish"
-	fish -c "nvm install lts"
-	fish -c "nvm use lts"
-
 .PHONY: nvim-all
 nvim-all: nodejs nvim-repo
 
