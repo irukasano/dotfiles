@@ -79,7 +79,7 @@ open_existing_worktree() {
   # ※ list --porcelain のフォーマットに依存しないよう、
   #   とりあえず通常の list を使い、1列目を識別子とみなします
   local selected
-  selected="$(git gtr list | tail -n +2 | fzf || true)"
+  selected="$(git gtr list --porcelain | tail -n +2 | fzf || true)"
 
   if [[ -z "$selected" ]]; then
     echo "No worktree selected."
