@@ -7,6 +7,8 @@ sudo systemctl restart chronyd
 echo "[resync] stepping time via chrony..."
 sudo chronyc -a makestep
 
+sleep 1
+
 echo "[resync] status:"
 timedatectl
 
