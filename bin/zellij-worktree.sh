@@ -79,20 +79,18 @@ open_existing_worktree() {
   # ※ list --porcelain のフォーマットに依存しないよう、
   #   とりあえず通常の list を使い、1列目を識別子とみなします
   local selected
-  selected="$(git gtr list --porcelain | tail -n +2 | fzf || true)"
+  selected="$(git gtr list --porcelain | awk -F'\t' '{print $2 "\t" $1 "\t" $3}' | fzf || true)"
 
   if [[ -z "$selected" ]]; then
     echo "No worktree selected."
     exit 0
   fi
 
-  # 先頭のフィールドを worktree の ID とみなす
-  # 例:
-  #   main [main]     /path/to/repo
-  #   auth-feature    /path/to/worktrees/auth-feature
-  # のような出力を想定
+  # 先頭のフィールド(ブランチ名)を worktree の ID とみなす
+  # list --porcelain は: path<TAB>branch<TAB>status
+  # fzf では: branch<TAB>path<TAB>status を表示している
   local id
-  id="$(awk '{print $1}' <<<"$selected")"
+  id="$(awk -F'\t' '{print $1}' <<<"$selected")"
 
   if [[ -z "$id" ]]; then
     echo "Error: could not extract worktree id from selection." >&2
@@ -140,4 +138,3 @@ main() {
 }
 
 main "$@"
-
