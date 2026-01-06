@@ -14,6 +14,7 @@ dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
 init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar
+	sudo $(YUM) install -y kitty-terminfo
 
 .PHONY: python3
 python3:
