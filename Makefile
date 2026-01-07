@@ -176,6 +176,7 @@ zellij:
 	mkdir -p $$HOME/.config/zellij
 	zellij setup --dump-config > $$HOME/.config/zellij/config.kdl
 	@grep -q '^theme ' $$HOME/.config/zellij/config.kdl || printf '\ntheme "pencil-light"\n' >> $$HOME/.config/zellij/config.kdl
+	@sed -i 's/bind "Ctrl /bind "Alt /g' $$HOME/.config/zellij/config.kdl
 
 .PHONY: git-gtr
 git-gtr:
