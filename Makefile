@@ -169,6 +169,7 @@ develop: zellij git-gtr tig codex codex-gh-mcp
 .PHONY: zellij
 zellij:
 	sudo mkdir -p /usr/local/src
+	mkdir -p $$HOME/bin
 	cd /usr/local/src; sudo wget https://github.com/zellij-org/zellij/releases/download/v0.43.1/zellij-no-web-x86_64-unknown-linux-musl.tar.gz
 	cd /usr/local/src; sudo tar xvzf zellij-no-web-x86_64-unknown-linux-musl.tar.gz
 	cd /usr/local/src; sudo mv zellij /usr/local/bin
@@ -182,13 +183,15 @@ zellij:
 .PHONY: git-gtr
 git-gtr:
 	sudo mkdir -p /usr/local/src
+	sudo rm -rf /usr/local/src/git-worktree-runner
 	cd /usr/local/src; sudo git clone https://github.com/coderabbitai/git-worktree-runner.git
-	cd /usr/local/src/git-worktree-runner; sudo ln -s "$$(pwd)/bin/git-gtr" /usr/local/bin/git-gtr
+	cd /usr/local/src/git-worktree-runner; sudo ln -sf "$$(pwd)/bin/git-gtr" /usr/local/bin/git-gtr
 
 .PHONY: tig
 tig:
 	sudo dnf install xmlto
 	sudo mkdir -p /usr/local/src
+	sudo rm -rf /usr/local/src/tig
 	cd /usr/local/src; sudo git clone https://github.com/jonas/tig.git
 	cd /usr/local/src; sudo chown -R user tig
 	cd /usr/local/src/tig; make
