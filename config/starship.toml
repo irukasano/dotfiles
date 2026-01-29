@@ -4,6 +4,7 @@ format = """
 [](color_orange)\
 $os\
 $username\
+$hostname\
 [](bg:color_yellow fg:color_orange)\
 $directory\
 [](fg:color_yellow bg:color_aqua)\
@@ -27,6 +28,7 @@ $pixi\
 [](fg:color_bg3 bg:color_bg1)\
 $time\
 [ ](fg:color_bg1)\
+$status\
 $line_break$character"""
 
 palette = 'cyberpunk2077'
@@ -48,7 +50,7 @@ color_fg0 = '#effbfb'
 color_bg1 = '#d65d0e'
 color_bg3 = '#86c1b9'
 color_blue = '#5fbf7f'
-color_aqua = '#D6B93F'
+color_aqua = '#C1A737'
 color_green = '#98971a'
 color_orange = '#d65d0e'
 color_purple = '#b16286'
@@ -87,7 +89,12 @@ Pop = ""
 show_always = true
 style_user = "bg:color_orange fg:color_fg0"
 style_root = "bg:color_orange fg:color_fg0"
-format = '[ $user ]($style)'
+format = '[ $user]($style)'
+
+[hostname]
+ssh_only = false
+style = "bg:color_orange fg:color_fg0"
+format = '[@$hostname ]($style)'
 
 [directory]
 style = "fg:color_fg0 bg:color_yellow"
@@ -111,10 +118,13 @@ format = '[[ $symbol $branch ](fg:color_fg0 bg:color_aqua)]($style)'
 [git_status]
 style = "bg:color_aqua"
 format = '[[($all_status$ahead_behind )](fg:color_fg0 bg:color_aqua)]($style)'
+ahead = '󰁝${count}'
+diverged = '󰹺󰁝${ahead_count}󰁅${behind_count}'
+behind = '󰁅${count}'
 untracked = ''
-stashed = ''
+stashed = '󱗜'
 modified = '󱈸'
-staged = '[󰐕\($count\)]'
+staged = '󱇬${count}'
 
 
 [nodejs]
@@ -182,9 +192,12 @@ format = '[[ $symbol( $version)( $environment) ](fg:color_fg0 bg:color_bg3)]($st
 
 [time]
 disabled = false
-time_format = "%R"
+time_format = "%F %T%z"
 style = "bg:color_bg1"
 format = '[[  $time ](fg:color_fg0 bg:color_bg1)]($style)'
+
+[status]
+disabled = false
 
 [line_break]
 disabled = false
