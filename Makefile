@@ -54,7 +54,7 @@ gh:
 	sudo $(YUM) install -y gh
 
 .PHONY: fish-all
-fish-all: fish fisherman fzf fish-repo
+fish-all: fish fisherman fzf starship fish-repo
 
 .PHONY: fish
 fish:
@@ -76,6 +76,10 @@ fish-repo:
 	cd ~/.config; mv fish fish.bak
 	git clone https://github.com/irukasano/config.fish.git ~/.config/fish
 	cd ~/.config/fish; git submodule update --init
+
+.PHONY: starship
+starship:
+	curl -sS https://starship.rs/install.sh | sh
 
 .PHONY: nvim-all
 nvim-all: nodejs nvim-repo
