@@ -25,6 +25,7 @@ $python\
 $docker_context\
 $conda\
 $pixi\
+$jobs\
 [](fg:color_bg3 bg:color_bg1)\
 $time\
 [ ](fg:color_bg1)\
@@ -47,19 +48,20 @@ color_yellow = '#d79921'
 
 [palettes.cyberpunk2077]
 color_fg0 = '#effbfb'
-color_bg1 = '#5fbf7f'
+color_black = '#382E05'
+color_bg1 = '#70978e'
 color_bg3 = '#86c1b9'
-color_blue = '#5fbf7f'
-color_aqua = '#C1A737'
+color_blue = '#86c1b9'
+color_aqua = '#5fbf7f'
 color_green = '#98971a'
-color_orange = '#d65d0e'
+color_orange = '#F7D653'
 color_purple = '#b16286'
 color_red = '#cc241d'
 color_yellow = '#5fbf7f'
 
 [os]
 disabled = false
-style = "bg:color_orange fg:color_fg0"
+style = "bg:color_orange fg:color_black"
 
 [os.symbols]
 Windows = "󰍲"
@@ -87,13 +89,13 @@ Pop = ""
 
 [username]
 show_always = true
-style_user = "bg:color_orange fg:color_fg0"
-style_root = "bg:color_orange fg:color_fg0"
+style_user = "bg:color_orange fg:color_black"
+style_root = "bg:color_orange fg:color_black"
 format = '[ $user]($style)'
 
 [hostname]
 ssh_only = false
-style = "bg:color_orange fg:color_fg0"
+style = "bg:color_orange fg:color_black"
 format = '[@$hostname ]($style)'
 
 [directory]
@@ -112,12 +114,12 @@ truncate_to_repo = false
 
 [git_branch]
 symbol = ""
-style = "bg:color_aqua"
-format = '[[ $symbol $branch ](fg:color_fg0 bg:color_aqua)]($style)'
+style = "bg:color_aqua fg:color_black"
+format = '[[ $symbol $branch ](fg:color_black bg:color_aqua)]($style)'
 
 [git_status]
 style = "bg:color_aqua"
-format = '[[($all_status$ahead_behind )](fg:color_fg0 bg:color_aqua)]($style)'
+format = '[[($all_status$ahead_behind )](fg:color_red bg:color_aqua)]($style)'
 ahead = '󰁝${count}'
 diverged = '󰹺󰁝${ahead_count}󰁅${behind_count}'
 behind = '󰁅${count}'
@@ -189,6 +191,10 @@ format = '[[ $symbol( $environment) ](fg:#83a598 bg:color_bg3)]($style)'
 [pixi]
 style = "bg:color_bg3"
 format = '[[ $symbol( $version)( $environment) ](fg:color_fg0 bg:color_bg3)]($style)'
+
+[jobs]
+style = "bg:color_bg3"
+format = '[[ $symbol( $context) ](fg:#83a598 bg:color_bg3)]($style)'
 
 [time]
 disabled = false
