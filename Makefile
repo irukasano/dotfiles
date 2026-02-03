@@ -80,6 +80,7 @@ fish-repo:
 .PHONY: starship
 starship:
 	curl -sS https://starship.rs/install.sh | sh
+	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
 
 .PHONY: nvim-all
 nvim-all: nodejs nvim-repo
