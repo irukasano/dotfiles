@@ -154,6 +154,11 @@ codex-gh-mcp:
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 
+.PHONY: lf
+lf:
+	mkdir -p $(HOME)/bin
+	env CGO_ENABLED=0 GOBIN=$(HOME)/bin go install -ldflags="-s -w" github.com/gokcehan/lf@latest
+
 .PHONY: tmux
 tmux:
 	sudo $(YUM) install -y tmux
