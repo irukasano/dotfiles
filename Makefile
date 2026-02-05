@@ -97,7 +97,8 @@ nodejs: nodejs-init
 	@export NVM_DIR="$(NVM_DIR)"; \
 	[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
 	nvm install --lts; \
-	LTS_VERSION="$$(nvm version --lts)"; \
+	nvm use --lts >/dev/null; \
+	LTS_VERSION="$$(nvm version 'lts/*')"; \
 	echo "Detected LTS version: $$LTS_VERSION"; \
 	grep -q 'nvm_default_version' $$HOME/.bashrc || { \
 		echo '' >> $$HOME/.bashrc; \
@@ -113,10 +114,14 @@ nvim-repo:
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
 .PHONY: codex
-codex:nodejs
-	@npm install -g @openai/codex
-	@mkdir -p ~/.codex
-	@sh -c '\
+codex: nodejs
+	@export NVM_DIR="$(NVM_DIR)"; \
+	[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh"; \
+	nvm use --lts >/dev/null; \
+	cd "$$HOME"; \
+	npm install -g @openai/codex; \
+	mkdir -p "$$HOME/.codex"; \
+	sh -c '\
 	CONFIG_FILE="$$HOME/.codex/config.toml"; \
 	NOTIFY_LINE="notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]"; \
 	touch "$$CONFIG_FILE"; \
