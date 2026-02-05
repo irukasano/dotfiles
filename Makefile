@@ -204,7 +204,7 @@ git-gtr:
 
 .PHONY: tig
 tig:
-	sudo dnf install xmlto
+	sudo $(YUM) -y install xmlto
 	sudo mkdir -p /usr/local/src
 	sudo rm -rf /usr/local/src/tig
 	cd /usr/local/src; sudo git clone https://github.com/jonas/tig.git
