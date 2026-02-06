@@ -192,6 +192,7 @@ zellij:
 	mkdir -p $$HOME/.config/zellij/layouts
 	zellij setup --dump-config > $$HOME/.config/zellij/config.kdl
 	@grep -q '^theme ' $$HOME/.config/zellij/config.kdl || printf '\ntheme "pencil-light"\n' >> $$HOME/.config/zellij/config.kdl
+	@sed -i 's/^[[:space:]]*keybinds {[[:space:]]*$$/keybinds clear-defaults=true {/' $$HOME/.config/zellij/config.kdl
 	@sed -i 's/bind "Ctrl /bind "Alt /g' $$HOME/.config/zellij/config.kdl
 	ln -sf "$$HOME/dotfiles/config/zellij/layouts/default.kdl" "$$HOME/.config/zellij/layouts"
 
