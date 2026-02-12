@@ -1,4 +1,4 @@
-YUM = dnf
+YUM ?= dnf
 
 NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
@@ -53,34 +53,47 @@ fd:
 gh:
 	sudo $(YUM) install -y gh
 
-.PHONY: fish-all
-fish-all: fish fisherman fzf starship fish-repo
-
-.PHONY: fish
-fish:
-	sudo $(YUM) install -y fish
-
-.PHONY: fisherman
-fisherman:
-	fish -c "curl -sL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source && fisher install jorgebucaran/fisher"
-
 .PHONY: fzf
 fzf:
-	fish -c "fisher install jethrokuan/fzf"
-	git clone --depth 1 https://github.com/junegunn/fzf.git ~/.fzf
-	~/.fzf/install
-	sudo ln -sf ~/.fzf/bin/fzf /usr/local/bin/fzf
-
-.PHONY: fish-repo
-fish-repo:
-	cd ~/.config; mv fish fish.bak
-	git clone https://github.com/irukasano/config.fish.git ~/.config/fish
-	cd ~/.config/fish; git submodule update --init
+	@if [ ! -d "$$HOME/.fzf" ]; then \
+		git clone --depth 1 https://github.com/junegunn/fzf.git $$HOME/.fzf; \
+	fi
+	@if [ ! -x "$$HOME/.fzf/bin/fzf" ]; then \
+		$$HOME/.fzf/install --bin; \
+	fi
+	@command -v fzf >/dev/null 2>&1 || sudo ln -sf $$HOME/.fzf/bin/fzf /usr/local/bin/fzf
 
 .PHONY: starship
 starship:
 	curl -sS https://starship.rs/install.sh | sh
 	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
+
+.PHONY: fish-all
+fish-all: fzf starship fish fish-link fish-plugins
+
+.PHONY: fish
+fish:
+	sudo $(YUM) install -y fish
+
+.PHONY: fish-link
+fish-link:
+	@mkdir -p $$HOME/.config/fish
+	@ln -snf "$$HOME/dotfiles/config/fish/config.fish"  "$$HOME/.config/fish/config.fish"
+	@ln -snf "$$HOME/dotfiles/config/fish/fish_plugins" "$$HOME/.config/fish/fish_plugins"
+	@# 自作 functions がある場合のみ、ファイル単位でリンク（生成物混入を避ける）
+	@if [ -d "$$HOME/dotfiles/config/fish/functions" ]; then \
+	  mkdir -p "$$HOME/.config/fish/functions"; \
+	  for f in "$$HOME"/dotfiles/config/fish/functions/*.fish; do \
+	    [ -e "$$f" ] || continue; \
+	    bn=$$(basename "$$f"); \
+	    ln -snf "$$f" "$$HOME/.config/fish/functions/$$bn"; \
+	  done; \
+	fi
+
+.PHONY: fish-plugins
+fish-plugins: fish-link
+	@fish -lc 'type -q fisher; or curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
+	@fish -lc 'fisher update'
 
 .PHONY: nvim-all
 nvim-all: nodejs nvim-repo
@@ -159,11 +172,6 @@ codex-gh-mcp:
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
 
-.PHONY: lf
-lf:
-	mkdir -p $(HOME)/bin
-	env CGO_ENABLED=0 GOBIN=$(HOME)/bin go install -ldflags="-s -w" github.com/gokcehan/lf@latest
-
 .PHONY: tmux
 tmux:
 	sudo $(YUM) install -y tmux
@@ -213,3 +221,5 @@ tig:
 	cd /usr/local/src/tig; make
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
+
+
