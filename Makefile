@@ -65,7 +65,11 @@ fzf:
 
 .PHONY: starship
 starship:
-	curl -sS https://starship.rs/install.sh | sh
+	@if [ -x /usr/local/bin/starship ]; then \
+		echo "starship already installed at /usr/local/bin/starship; skipping install."; \
+	else \
+		curl -sS https://starship.rs/install.sh | sh; \
+	fi
 	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
 
 .PHONY: fish-all
@@ -222,4 +226,31 @@ tig:
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
 
+# --- yazi ------------------------------------------------------------
+ifeq ($(YUM),apt)
+YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip-full file chafa unzip
+else
+YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip p7zip-plugins file chafa unzip
+endif
 
+.PHONY: yazi
+yazi: fzf
+	# deps (fzf は既存タスクで入る前提)
+	sudo $(YUM) install -y $(YAZI_DEPS)
+
+	# Ubuntu の fd-find は fdfind なので fd に寄せる（存在しない場合のみ）
+	@if command -v fdfind >/dev/null 2>&1 && ! command -v fd >/dev/null 2>&1; then \
+		sudo ln -sf /usr/bin/fdfind /usr/local/bin/fd; \
+	fi
+
+	# yazi (musl) を GitHub Releases から取得
+	sudo mkdir -p /usr/local/src
+	@tmpdir="$$(mktemp -d)"; \
+	zipfile="$$tmpdir/yazi.zip"; \
+	echo "Downloading yazi (musl) ..."; \
+	curl -L -o "$$zipfile" https://github.com/sxyazi/yazi/releases/latest/download/yazi-x86_64-unknown-linux-musl.zip; \
+	unzip -q "$$zipfile" -d "$$tmpdir"; \
+	sudo install -m 0755 "$$tmpdir"/*/yazi /usr/local/bin/yazi; \
+	sudo install -m 0755 "$$tmpdir"/*/ya   /usr/local/bin/ya; \
+	rm -rf "$$tmpdir"; \
+	yazi --version
