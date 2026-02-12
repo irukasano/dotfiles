@@ -75,11 +75,20 @@ open_existing_worktree() {
     exit 1
   fi
 
-  # git gtr list の出力から 1 行選択
-  # ※ list --porcelain のフォーマットに依存しないよう、
-  #   とりあえず通常の list を使い、1列目を識別子とみなします
+  # git gtr list --porcelain の各 worktree について、
+  # 最新コミット件名を付けて fzf に渡す。
+  # フォーマット: branch<TAB>latest-subject<TAB>path<TAB>status
+  local rows=""
+  local path branch status subject
+  while IFS=$'\t' read -r path branch status; do
+    [[ -z "${path:-}" || -z "${branch:-}" ]] && continue
+    subject="$(git -C "$path" log -1 --pretty=%s 2>/dev/null || true)"
+    [[ -z "$subject" ]] && subject="(no commits)"
+    rows+="${branch}\t${subject}\t${path}\t${status}"$'\n'
+  done < <(git gtr list --porcelain)
+
   local selected
-  selected="$(git gtr list --porcelain | awk -F'\t' '{print $2 "\t" $1 "\t" $3}' | fzf || true)"
+  selected="$(printf '%b' "$rows" | fzf --delimiter=$'\t' --with-nth=1,2,4 || true)"
 
   if [[ -z "$selected" ]]; then
     echo "No worktree selected."
@@ -88,7 +97,7 @@ open_existing_worktree() {
 
   # 先頭のフィールド(ブランチ名)を worktree の ID とみなす
   # list --porcelain は: path<TAB>branch<TAB>status
-  # fzf では: branch<TAB>path<TAB>status を表示している
+  # fzf に渡している行は: branch<TAB>latest-subject<TAB>path<TAB>status
   local id
   id="$(awk -F'\t' '{print $1}' <<<"$selected")"
 
