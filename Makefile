@@ -254,3 +254,21 @@ yazi: fzf
 	sudo install -m 0755 "$$tmpdir"/*/ya   /usr/local/bin/ya; \
 	rm -rf "$$tmpdir"; \
 	yazi --version
+
+yazi-settings:
+	rm -rf ~/.config/yazi/flavors
+	git clone https://github.com/yazi-rs/flavors.git ~/.config/yazi/flavors
+	git clone https://github.com/BennyOe/tokyo-night.yazi ~/.config/yazi/flavors/tokyo-night.yazi
+	git clone https://github.com/gosxrgxx/flexoki-light.yazi ~/.config/yazi/flavors/flexoki-light.yazi
+	ln -sf $(PWD)/config/yazi/yazi.toml $(HOME)/.config/yazi/yazi.toml
+	ln -sf $(PWD)/config/yazi/theme.toml $(HOME)/.config/yazi/theme.toml
+	ln -sf $(PWD)/config/yazi/keymap.toml $(HOME)/.config/yazi/keymap.toml
+	ln -sf $(PWD)/config/yazi/vfs.toml $(HOME)/.config/yazi/vfs.toml
+	ln -sf $(PWD)/config/yazi/init.lua $(HOME)/.config/yazi/init.lua
+
+yazi-plugins: yazi
+	ln -sf $(PWD)/config/yazi/plugins/smart-tab.yazi $(HOME)/.config/yazi/plugins/smart-tab.yazi
+	ya pkg add yazi-rs/plugins:full-border
+	ya pkg add yazi-rs/plugins:chmod
+	ya pkg add dedukun/bookmarks
+
