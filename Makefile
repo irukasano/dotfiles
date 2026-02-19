@@ -228,9 +228,9 @@ tig:
 
 # --- yazi ------------------------------------------------------------
 ifeq ($(YUM),apt)
-YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip-full file chafa unzip
+YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip-full file chafa unzip librsvg2-bin
 else
-YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip p7zip-plugins file chafa unzip
+YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip p7zip-plugins file chafa unzip librsvg2-tools
 endif
 
 .PHONY: yazi
@@ -273,4 +273,3 @@ yazi-plugins: yazi
 	ya pkg add yazi-rs/plugins:full-border
 	ya pkg add yazi-rs/plugins:chmod
 	ya pkg add dedukun/bookmarks
-
