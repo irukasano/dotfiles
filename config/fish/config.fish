@@ -94,7 +94,7 @@ if set -q DISPLAY
         ~/bin/smart-ssh.sh $argv
     end
 
-    set -x SVN_SSH "/usr/bin/ssh -F $HOME/.ssh/config.windows"
+    #set -x SVN_SSH "/usr/bin/ssh -F $HOME/.ssh/config.windows"
 end
 
 set -x GPG_TTY (tty)
