@@ -66,3 +66,83 @@ require("bookmarks"):setup({
         },
     },
 })
+
+-- linemode
+function Linemode:fullmode()
+    local f = self._file
+    local cha = f.cha
+
+    -------------------------------------------------
+    -- permission (drwxr-xr-x 形式)
+    -------------------------------------------------
+    local perm = "-"
+
+    if cha and cha.mode then
+        -- perm = perm_string(cha.mode)
+        perm = cha:perm()
+    end
+
+    -------------------------------------------------
+    -- owner
+    -------------------------------------------------
+    local owner = "-"
+    if cha and cha.uid then
+        owner = ya.user_name(cha.uid) or tostring(cha.uid)
+    end
+
+    -------------------------------------------------
+    -- size
+    -------------------------------------------------
+    local size = f:size()
+    local size_s = size and ya.readable_size(size) or "-"
+
+    -------------------------------------------------
+    -- mime (20桁固定)
+    -------------------------------------------------
+    local mime = f:mime() or ""
+    if mime == "inode/directory" then
+        mime = "dir"
+    end
+
+    local mime_s
+    if #mime > 20 then
+        mime_s = mime:sub(1, 19) .. "…"
+    else
+        mime_s = string.format("%-20s", mime)
+    end
+
+    -------------------------------------------------
+    -- mtime
+    -------------------------------------------------
+    local ts = math.floor(cha and cha.mtime or 0)
+    local time = ts > 0 and os.date("%Y-%m-%d %H:%M:%S", ts) or ""
+
+    -------------------------------------------------
+    -- 出力
+    -------------------------------------------------
+    return string.format(
+        "%-10s %-8s %8s  %s  %s",
+        perm,
+        owner,
+        size_s,
+        mime_s,
+        time
+    )
+end
+
+
+-- Linemode
+function Linemode:size_and_mtime()
+    local f = self._file
+
+    -- ---- 時刻 ----
+    local ts = math.floor(f.cha.mtime or 0)
+    local time = ts > 0 and os.date("%Y-%m-%d %H:%M:%S", ts) or ""
+
+    -- ---- サイズ ----
+    local size = f:size()
+    local size_s = size and ya.readable_size(size) or "-"
+
+    return string.format("%8s %s", size_s, time)
+end
+

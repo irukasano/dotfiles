@@ -92,6 +92,8 @@ keymap = [
     { on = [ "m", "m" ], run = "linemode mtime",       desc = "Linemode: mtime" },
     { on = [ "m", "o" ], run = "linemode owner",       desc = "Linemode: owner" },
     { on = [ "m", "n" ], run = "linemode none",        desc = "Linemode: none" },
+    { on = [ "m", "a" ], run = "linemode size_and_mtime", desc = "Linemode: size and mtime" },
+    { on = [ "m", "f" ], run = "linemode fullmode", desc = "Linemode: full" },
 
     # Copy
     { on = [ "c", "c" ], run = "copy path",             desc = "Copy file URL" },
