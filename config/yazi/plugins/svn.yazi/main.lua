@@ -125,67 +125,58 @@ local function do_commit(targets)
     return
   end
 
-  ya.input({ title = "SVN Commit Message", pos = { "center", w = 60 } }, function(msg)
-    if not msg or msg == "" then
-      ya.notify({
-        title = "SVN",
-        content = "Commit cancelled",
-        level = "warn",
-        timeout = 2.0,
-      })
-      return
-    end
-
-    local argv = { "svn", "commit", "-m", msg }
-    for _, p in ipairs(targets) do
-      argv[#argv + 1] = p
-    end
-
-    -- ✅ 開始通知
+  local msg = ya.input({ title = "SVN Commit Message", pos = { "center", w = 60 } })
+  if not msg or msg == "" then
     ya.notify({
       title = "SVN",
-      content = "Committing...",
+      content = "Commit cancelled",
+      level = "warn",
+      timeout = 2.0,
+    })
+    return
+  end
+
+  ya.notify({
+    title = "SVN",
+    content = "Committing...",
+    level = "info",
+    timeout = 3.0,
+  })
+
+  local out, err = Command("svn")
+    :arg({ "commit", "-m", msg, table.unpack(targets) })
+    :stdout(Command.PIPED)
+    :stderr(Command.PIPED)
+    :output()
+
+  if not out then
+    ya.notify({
+      title = "SVN",
+      content = "Commit failed:\n" .. tostring(err),
+      level = "error",
+      timeout = 8.0,
+    })
+    return
+  end
+
+  if out.status and out.status.success then
+    ya.notify({
+      title = "SVN",
+      content = "Commit successful",
       level = "info",
       timeout = 3.0,
     })
+  else
+    local code = out.status and out.status.code or -1
+    local msg2 = (out.stderr and out.stderr ~= "" and out.stderr) or "Unknown error"
 
-    local out, err = Command("svn")
-      :arg({ "commit", "-m", msg, table.unpack(targets) })
-      :stdout(Command.PIPED)
-      :stderr(Command.PIPED)
-      :output()
-
-    if not out then
-      ya.notify({
-        title = "SVN",
-        content = "Commit failed:\n" .. tostring(err),
-        level = "error",
-        timeout = 8.0,
-      })
-      return
-    end
-
-    if out.status and out.status.success then
-      -- ✅ 成功通知
-      ya.notify({
-        title = "SVN",
-        content = "Commit successful",
-        level = "info",
-        timeout = 3.0,
-      })
-    else
-      local code = out.status and out.status.code or -1
-      local msg2 = (out.stderr and out.stderr ~= "" and out.stderr) or "Unknown error"
-
-      -- ❌ 失敗通知
-      ya.notify({
-        title = "SVN",
-        content = ("Commit failed (code=%d)\n%s"):format(code, msg2),
-        level = "error",
-        timeout = 8.0,
-      })
-    end
-  end)
+    ya.notify({
+      title = "SVN",
+      content = ("Commit failed (code=%d)\n%s"):format(code, msg2),
+      level = "error",
+      timeout = 8.0,
+    })
+  end
 end
 
 ------------------------------------------------------------
@@ -218,4 +209,3 @@ function M.entry(_, job)
 end
 
 return M
-
