@@ -4,6 +4,8 @@ NVM_DIR             := $(HOME)/.nvm
 NVM_SH              := $(NVM_DIR)/nvm.sh
 NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh
 
+SRC_DIR             := $(HOME)/src
+
 .PHONY: all
 all: init dotfiles-all fish-all nvim-all ag fd gh osc52
 
@@ -211,10 +213,10 @@ zellij:
 
 .PHONY: git-gtr
 git-gtr:
-	sudo mkdir -p /usr/local/src
-	sudo rm -rf /usr/local/src/git-worktree-runner
-	cd /usr/local/src; sudo git clone https://github.com/coderabbitai/git-worktree-runner.git
-	cd /usr/local/src/git-worktree-runner; sudo ln -sf "$$(pwd)/bin/git-gtr" /usr/local/bin/git-gtr
+	mkdir -p "$(SRC_DIR)"
+	rm -rf "$(SRC_DIR)/git-worktree-runner"
+	cd "$(SRC_DIR)/"; git clone https://github.com/coderabbitai/git-worktree-runner.git
+	cd "$(SRC_DIR)/git-worktree-runner" && ./install.sh
 
 .PHONY: tig
 tig:
