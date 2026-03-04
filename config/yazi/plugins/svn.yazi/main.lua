@@ -73,6 +73,48 @@ local function svn_status_raw(paths)
   return out.stdout
 end
 
+local function is_svn_path(path)
+  local out = Command("svn")
+    :arg({ "info", path })
+    :stdout(Command.PIPED)
+    :stderr(Command.PIPED)
+    :output()
+
+  return out and out.status and out.status.success
+end
+
+local function ensure_svn_targets(paths)
+  for _, p in ipairs(paths) do
+    if not is_svn_path(p) then
+      ya.notify({
+        title = "SVN",
+        content = ("Not an SVN working copy target: %s"):format(p),
+        level = "error",
+        timeout = 6.0,
+      })
+      return false
+    end
+  end
+  return true
+end
+
+local function collect_unversioned(paths)
+  local s = svn_status_raw(paths)
+  if not s then return nil end
+
+  local unversioned = {}
+  for line in s:gmatch("[^\r\n]+") do
+    if line:sub(1, 1) == "?" then
+      local p = line:sub(9)
+      if p and p ~= "" then
+        unversioned[#unversioned + 1] = p
+      end
+    end
+  end
+
+  return unversioned
+end
+
 local function has_unversioned(paths)
   local s = svn_status_raw(paths)
   if not s then return false end
@@ -89,8 +131,23 @@ end
 -- Actions
 ------------------------------------------------------------
 local function do_add(targets)
+  if not ensure_svn_targets(targets) then
+    return
+  end
+
+  local unversioned = collect_unversioned(targets)
+  if not unversioned then
+    ya.notify({ title = "SVN", content = "status failed", level = "error", timeout = 5.0 })
+    return
+  end
+
+  if #unversioned == 0 then
+    ya.notify({ title = "SVN", content = "No unversioned files", level = "info", timeout = 3.0 })
+    return
+  end
+
   local argv = { "svn", "add" }
-  for _, p in ipairs(targets) do argv[#argv + 1] = p end
+  for _, p in ipairs(unversioned) do argv[#argv + 1] = p end
   run_svn(argv)
 end
 
@@ -115,6 +172,10 @@ local function do_update(targets)
 end
 
 local function do_commit(targets)
+  if not ensure_svn_targets(targets) then
+    return
+  end
+
   if has_unversioned(targets) then
     ya.notify({
       title = "SVN",
@@ -125,67 +186,58 @@ local function do_commit(targets)
     return
   end
 
-  ya.input({ title = "SVN Commit Message", pos = { "center", w = 60 } }, function(msg)
-    if not msg or msg == "" then
-      ya.notify({
-        title = "SVN",
-        content = "Commit cancelled",
-        level = "warn",
-        timeout = 2.0,
-      })
-      return
-    end
-
-    local argv = { "svn", "commit", "-m", msg }
-    for _, p in ipairs(targets) do
-      argv[#argv + 1] = p
-    end
-
-    -- ✅ 開始通知
+  local msg = ya.input({ title = "SVN Commit Message", pos = { "center", w = 60 } })
+  if not msg or msg == "" then
     ya.notify({
       title = "SVN",
-      content = "Committing...",
+      content = "Commit cancelled",
+      level = "warn",
+      timeout = 2.0,
+    })
+    return
+  end
+
+  ya.notify({
+    title = "SVN",
+    content = "Committing...",
+    level = "info",
+    timeout = 3.0,
+  })
+
+  local out, err = Command("svn")
+    :arg({ "commit", "-m", msg, table.unpack(targets) })
+    :stdout(Command.PIPED)
+    :stderr(Command.PIPED)
+    :output()
+
+  if not out then
+    ya.notify({
+      title = "SVN",
+      content = "Commit failed:\n" .. tostring(err),
+      level = "error",
+      timeout = 8.0,
+    })
+    return
+  end
+
+  if out.status and out.status.success then
+    ya.notify({
+      title = "SVN",
+      content = "Commit successful",
       level = "info",
       timeout = 3.0,
     })
+  else
+    local code = out.status and out.status.code or -1
+    local msg2 = (out.stderr and out.stderr ~= "" and out.stderr) or "Unknown error"
 
-    local out, err = Command("svn")
-      :arg({ "commit", "-m", msg, table.unpack(targets) })
-      :stdout(Command.PIPED)
-      :stderr(Command.PIPED)
-      :output()
-
-    if not out then
-      ya.notify({
-        title = "SVN",
-        content = "Commit failed:\n" .. tostring(err),
-        level = "error",
-        timeout = 8.0,
-      })
-      return
-    end
-
-    if out.status and out.status.success then
-      -- ✅ 成功通知
-      ya.notify({
-        title = "SVN",
-        content = "Commit successful",
-        level = "info",
-        timeout = 3.0,
-      })
-    else
-      local code = out.status and out.status.code or -1
-      local msg2 = (out.stderr and out.stderr ~= "" and out.stderr) or "Unknown error"
-
-      -- ❌ 失敗通知
-      ya.notify({
-        title = "SVN",
-        content = ("Commit failed (code=%d)\n%s"):format(code, msg2),
-        level = "error",
-        timeout = 8.0,
-      })
-    end
-  end)
+    ya.notify({
+      title = "SVN",
+      content = ("Commit failed (code=%d)\n%s"):format(code, msg2),
+      level = "error",
+      timeout = 8.0,
+    })
+  end
 end
 
 ------------------------------------------------------------
@@ -218,4 +270,3 @@ function M.entry(_, job)
 end
 
 return M
-
