@@ -67,6 +67,38 @@ require("bookmarks"):setup({
     },
 })
 
+-- dirsort plugin
+require("dirsort"):setup({
+  -- 例1: Downloads は更新日時の新しい順（mtime desc）
+  {
+    path = os.getenv("HOME") .. "/ダウンロード",
+    sort_by = "mtime",
+    reverse = true,
+    dir_first = true, -- お好みで
+  },
+
+  -- 例2: /var/log は更新日時の古い順（mtime asc）
+  -- {
+  --  path = "/var/log",
+  --  sort_by = "mtime",
+  --  reverse = false,
+  --},
+  -- 例3: 「末尾が /Downloads」のような suffix マッチ（末尾に / を付ける）
+  -- path = "/Downloads/",
+  -- sort_by = "mtime",
+  -- reverse = true,
+
+  -- 例4: Lua pattern（pattern: で始める）
+  -- 例: どの階層でも「/Downloads」で終わるなら対象
+  -- {
+  --   path = "pattern:.*/Downloads$",
+  --   sort_by = "mtime",
+  --   reverse = true,
+  -- },
+}, {
+  debug = true, -- true にすると ya.err() へデバッグ出力します
+})
+
 -- linemode
 function Linemode:fullmode()
     local f = self._file

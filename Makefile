@@ -270,6 +270,7 @@ yazi-settings:
 yazi-plugins: yazi
 	ln -sf $(PWD)/config/yazi/plugins/smart-tab.yazi $(HOME)/.config/yazi/plugins/smart-tab.yazi
 	ln -sf $(PWD)/config/yazi/plugins/svn.yazi $(HOME)/.config/yazi/plugins/svn.yazi
+	ln -sf $(PWD)/config/yazi/plugins/dirsort.yazi $(HOME)/.config/yazi/plugins/dirsort.yazi
 	ya pkg add imsi32/yatline
 	ya pkg add yazi-rs/plugins:full-border
 	ya pkg add yazi-rs/plugins:chmod
