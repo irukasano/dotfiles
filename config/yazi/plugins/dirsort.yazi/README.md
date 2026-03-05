@@ -47,6 +47,15 @@ require("dirsort")::setup({
   --   sort_by = "mtime",
   --   reverse = true,
   -- },
+
+  -- 例5: どのルールにも一致しないときはデフォルトソートへ戻す
+  -- 先に一致したルールが優先されるため、必ず最後に置く
+  {
+    path = "pattern:.*",
+    sort_by = "alphabetical",
+    reverse = false,
+    dir_first = true,
+  },
 }, {
   debug = false, -- true にすると ya.err() へデバッグ出力します
 })
@@ -106,6 +115,22 @@ path = "pattern:.*/Downloads$"
 }
 ```
 
+### 移動後にデフォルトソートへ戻したい場合
+
+Yazi は直前のソート状態が継続するため、`dirsort` 側で「最後のフォールバックルール」を 1 件追加すると、
+対象外のディレクトリへ移動したときにデフォルトへ戻せます。
+
+```
+{
+  path = "pattern:.*",
+  sort_by = "alphabetical",
+  reverse = false,
+  dir_first = true,
+}
+```
+
+`sort_by / reverse / dir_first` は `yazi.toml` の `[mgr]` デフォルトに合わせてください。
+
 ## 動作確認の手順
 
 1. `debug = true` に変更
@@ -141,4 +166,3 @@ yazi --version
 ## ライセンス
 
 自由に改変・利用して構いません。
-

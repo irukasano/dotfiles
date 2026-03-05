@@ -95,6 +95,15 @@ require("dirsort"):setup({
   --   sort_by = "mtime",
   --   reverse = true,
   -- },
+
+  -- 例5: どのルールにも一致しない場合はデフォルトへ戻す
+  -- 必ず最後に置く（先に一致したルールが優先されるため）
+  {
+    path = "pattern:.*",
+    sort_by = "alphabetical",
+    reverse = false,
+    dir_first = true,
+  },
 }, {
   debug = true, -- true にすると ya.err() へデバッグ出力します
 })
@@ -177,4 +186,3 @@ function Linemode:size_and_mtime()
 
     return string.format("%8s %s", size_s, time)
 end
-
