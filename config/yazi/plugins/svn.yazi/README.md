@@ -46,7 +46,8 @@ desc = "SVN Commit"
 
 - If files are selected, they are used as targets.
 - Otherwise, the currently hovered file/directory is used.
-- Each target is validated using `svn info`.
+- `add` uses `svn status` and adds only unversioned (`?`) entries.
+- `update` / `commit` validate each target using `svn info`.
 - `commit` prompts for a commit message.
 - All operations are executed asynchronously.
 
@@ -58,8 +59,7 @@ desc = "SVN Commit"
 ## Notes
 
 - Recursive behavior follows SVN defaults.
-- No automatic `add` or `resolve` handling is implemented.
+- `resolve` handling is not implemented.
 - For advanced workflows, extend `main.lua`.
 
 This is intentionally minimal and designed for personal dotfiles usage.
-

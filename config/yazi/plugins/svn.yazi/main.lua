@@ -131,10 +131,6 @@ end
 -- Actions
 ------------------------------------------------------------
 local function do_add(targets)
-  if not ensure_svn_targets(targets) then
-    return
-  end
-
   local unversioned = collect_unversioned(targets)
   if not unversioned then
     ya.notify({ title = "SVN", content = "status failed", level = "error", timeout = 5.0 })
