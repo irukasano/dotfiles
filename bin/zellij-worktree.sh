@@ -42,7 +42,7 @@ create_worktree_and_tab() {
   shift
 
   # worktree 作成 (オプションはそのまま git gtr new に渡す)
-  git gtr new "$id" "$@"
+  git gtr new "$id" --from develop "$@"
 
   # 作成された worktree のパスを取得
   # git gtr go <id> は worktree のフルパスを標準出力します
