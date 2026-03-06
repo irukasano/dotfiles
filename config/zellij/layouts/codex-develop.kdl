@@ -21,7 +21,7 @@ layout {
             pane {
                 pane size="60%" {
                     name "codex"
-                    command "codex"
+                    command "fish"
                 }
                 pane {
                     name "fish"
