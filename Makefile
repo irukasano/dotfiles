@@ -132,6 +132,9 @@ nvim-repo:
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
+.PHONY: codex-all
+codex-all: codex codex-gh-mcp codex-settings
+
 .PHONY: codex
 codex: nodejs
 	@export NVM_DIR="$(NVM_DIR)"; \
@@ -150,6 +153,7 @@ codex: nodejs
 		cat "$$CONFIG_FILE" >> "$$TMP_FILE"; \
 		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
 	fi'
+
 
 .PHONY: codex-gh-mcp
 codex-gh-mcp:
@@ -174,6 +178,11 @@ codex-gh-mcp:
 		echo "mcp_servers.gh already exists in $$CONFIG_FILE; skipping config append."; \
 	fi'
 
+.PHONY: codex-settings
+codex-settings:
+	mkdir -p ~/.codex
+	ln -sf "$$HOME/dotfiles/config/codex/AGENTS.md" $$HOME/.codex
+
 .PHONY: uv
 uv:
 	curl -LsSf https://astral.sh/uv/install.sh | sh
@@ -193,7 +202,7 @@ osc52:
 	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
 
 .PHONY: develop
-develop: zellij git-gtr tig codex codex-gh-mcp
+develop: zellij git-gtr tig codex-all
 
 .PHONY: zellij
 zellij:
