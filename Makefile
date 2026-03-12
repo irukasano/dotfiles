@@ -205,22 +205,18 @@ osc52:
 .PHONY: develop
 develop: zellij git-gtr tig codex-all
 
-.PHONY: zellij gh
-zellij:
+.PHONY: zellij
+zellij: gh
 	sudo mkdir -p /usr/local/src
 	mkdir -p $$HOME/bin
-	cd /usr/local/src; sudo wget https://github.com/zellij-org/zellij/releases/download/v0.43.1/zellij-no-web-x86_64-unknown-linux-musl.tar.gz
-	cd /usr/local/src; sudo tar xvzf zellij-no-web-x86_64-unknown-linux-musl.tar.gz
-	cd /usr/local/src; sudo mv zellij /usr/local/bin
+	cd /usr/local/src; sudo wget -O zellij.tar.gz https://github.com/zellij-org/zellij/releases/download/v0.43.1/zellij-x86_64-unknown-linux-gnu.tar.gz
+	cd /usr/local/src; sudo tar xvzf zellij.tar.gz
+	cd /usr/local/src; sudo mv zellij /usr/local/bin/zellij
 	ln -sf "$$HOME/dotfiles/bin/zellij-worktree.sh" $$HOME/bin
 	ln -sf "$$HOME/dotfiles/bin/zellij-gh.sh" $$HOME/bin
 	mkdir -p $$HOME/.config/zellij/layouts
-	#zellij setup --dump-config > $$HOME/.config/zellij/config.kdl
-	#@grep -q '^theme ' $$HOME/.config/zellij/config.kdl || printf '\ntheme "pencil-light"\n' >> $$HOME/.config/zellij/config.kdl
-	#@sed -i 's/^[[:space:]]*keybinds {[[:space:]]*$$/keybinds clear-defaults=true {/' $$HOME/.config/zellij/config.kdl
-	#@sed -i 's/bind "Ctrl /bind "Alt /g' $$HOME/.config/zellij/config.kdl
-	ln -sf "$$HOME/dotfiles/config/zellij/config.kdl" "$$HOME/.config/zellij"
-	ln -sf "$$HOME/dotfiles/config/zellij/layouts/default.kdl" "$$HOME/.config/zellij/layouts"
+	ln -sf "$$HOME/dotfiles/config/zellij/config.kdl" "$$HOME/.config/zellij/config.kdl"
+	ln -sf "$$HOME/dotfiles/config/zellij/layouts/default.kdl" "$$HOME/.config/zellij/layouts/default.kdl"
 
 .PHONY: git-gtr
 git-gtr:
