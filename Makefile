@@ -44,8 +44,8 @@ dotfiles-repo:
 
 .PHONY: ag
 ag:
-	#sudo $(YUM) install -y silversearcher-ag
-	sudo $(YUM) install -y ag
+	#sudo $(YUM) install -y silversearcher-ag, ripgrep
+	sudo $(YUM) install -y ag ripgrep
 
 .PHONY: fd
 fd:
@@ -54,6 +54,7 @@ fd:
 .PHONY: gh
 gh:
 	sudo $(YUM) install -y gh
+	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
 
 .PHONY: fzf
 fzf:
