@@ -205,7 +205,7 @@ osc52:
 .PHONY: develop
 develop: zellij git-gtr tig codex-all
 
-.PHONY: zellij
+.PHONY: zellij gh
 zellij:
 	sudo mkdir -p /usr/local/src
 	mkdir -p $$HOME/bin
@@ -213,6 +213,7 @@ zellij:
 	cd /usr/local/src; sudo tar xvzf zellij-no-web-x86_64-unknown-linux-musl.tar.gz
 	cd /usr/local/src; sudo mv zellij /usr/local/bin
 	ln -sf "$$HOME/dotfiles/bin/zellij-worktree.sh" $$HOME/bin
+	ln -sf "$$HOME/dotfiles/bin/zellij-gh.sh" $$HOME/bin
 	mkdir -p $$HOME/.config/zellij/layouts
 	#zellij setup --dump-config > $$HOME/.config/zellij/config.kdl
 	#@grep -q '^theme ' $$HOME/.config/zellij/config.kdl || printf '\ntheme "pencil-light"\n' >> $$HOME/.config/zellij/config.kdl
