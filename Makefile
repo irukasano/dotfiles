@@ -22,6 +22,18 @@ init:
 python3:
 	sudo $(YUM) install -y python3
 
+.PHONY: rustup
+rustup:
+	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y
+
+.PHONY: cargo
+cargo:
+	test -x "$$HOME/.cargo/bin/cargo" || $(MAKE) rustup
+
+.PHONY: perl
+perl:
+	sudo $(YUM) install -y perl
+
 .PHONY: grcat
 grcat:
 	sudo wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.12.orig.tar.gz -O /usr/local/src/grc_1.12.orig.tar.gz
@@ -207,17 +219,23 @@ osc52:
 develop: zellij git-gtr tig codex-all
 
 .PHONY: zellij
-zellij: gh
-	sudo mkdir -p /usr/local/src
-	mkdir -p $$HOME/bin
-	cd /usr/local/src; sudo wget -O zellij.tar.gz https://github.com/zellij-org/zellij/releases/download/v0.43.1/zellij-x86_64-unknown-linux-gnu.tar.gz
-	cd /usr/local/src; sudo tar xvzf zellij.tar.gz
-	cd /usr/local/src; sudo mv zellij /usr/local/bin/zellij
-	ln -sf "$$HOME/dotfiles/bin/zellij-worktree.sh" $$HOME/bin
-	ln -sf "$$HOME/dotfiles/bin/zellij-gh.sh" $$HOME/bin
-	mkdir -p $$HOME/.config/zellij/layouts
+zellij: gh cargo perl
+	mkdir -p "$$HOME/bin"
+	mkdir -p "$$HOME/.config/zellij/layouts"
+
+	"$$HOME/.cargo/bin/cargo" install --locked zellij
+
+	test ! -e /usr/local/bin/zellij || sudo mv /usr/local/bin/zellij /usr/local/bin/zellij.musl.bak
+	sudo install -m 0755 "$$HOME/.cargo/bin/zellij" /usr/local/bin/zellij
+
+	ln -sf "$$HOME/dotfiles/bin/zellij-worktree.sh" "$$HOME/bin/zellij-worktree.sh"
+	ln -sf "$$HOME/dotfiles/bin/zellij-gh.sh" "$$HOME/bin/zellij-gh.sh"
 	ln -sf "$$HOME/dotfiles/config/zellij/config.kdl" "$$HOME/.config/zellij/config.kdl"
 	ln -sf "$$HOME/dotfiles/config/zellij/layouts/default.kdl" "$$HOME/.config/zellij/layouts/default.kdl"
+
+	hash -r || true
+	/usr/local/bin/zellij --version
+	ldd /usr/local/bin/zellij
 
 .PHONY: git-gtr
 git-gtr:
