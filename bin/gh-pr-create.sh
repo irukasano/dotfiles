@@ -10,7 +10,6 @@ Example:
   gh-pr-create.sh -B develop --reviewer alice --assignee bob --title "変更履歴 基本設計"
 
 Optional env vars:
-  PR_SUMMARY_CMD   Command that receives summary prompt + git diff on stdin and outputs markdown for "## Summary"
   PR_BODY_DEBUG=1  Keep generated body file for inspection
 EOF
 }
@@ -37,12 +36,10 @@ summary_prompt="$(cat <<'EOF'
 EOF
 )"
 
-summary_cmd="${PR_SUMMARY_CMD:-codex}"
-
 require_cmd git
+require_cmd codex
 require_cmd gh
 require_cmd perl
-require_cmd "$summary_cmd"
 
 base_branch=""
 title=""
@@ -135,12 +132,37 @@ fi
 
 diff_text="$(git diff --find-renames --stat=200,120 "${merge_base}..HEAD")"$'\n\n'"$(git diff --find-renames "${merge_base}..HEAD")"
 
+run_summary_cmd() {
+  local prompt_file output_last
+  local -a cmd
+
+  prompt_file="$(mktemp -t gh-pr-summary-prompt.XXXXXX.txt)"
+  output_last="$(mktemp -t gh-pr-summary-output.XXXXXX.txt)"
+
+  {
+    printf '%s\n' "$summary_prompt"
+    printf '%s' "$diff_text"
+  } > "$prompt_file"
+
+  cmd=(codex exec --skip-git-repo-check --output-last-message "$output_last")
+  if [[ -n "${CODEX_MODEL:-}" ]]; then
+    cmd+=(-m "$CODEX_MODEL")
+  fi
+
+  "${cmd[@]}" - < "$prompt_file" >/dev/null 2>&1 || true
+
+  if [[ -s "$output_last" ]]; then
+    cat "$output_last"
+    rm -f "$prompt_file" "$output_last"
+    return 0
+  fi
+
+  rm -f "$prompt_file" "$output_last"
+  return 1
+}
+
 generate_summary() {
-  local full_prompt
-
-  full_prompt="$summary_prompt"$'\n'"$diff_text"
-
-  if printf '%s' "$full_prompt" | "$summary_cmd"; then
+  if run_summary_cmd; then
     return 0
   fi
 
