@@ -55,6 +55,7 @@ fd:
 gh:
 	sudo $(YUM) install -y gh
 	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
+	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
 
 .PHONY: fzf
 fzf:
