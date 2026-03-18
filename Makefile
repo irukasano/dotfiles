@@ -27,9 +27,15 @@ init:
 #---------------------------------------------------------------------------------#
 # scripting runtimes
 #---------------------------------------------------------------------------------#
+ifeq ($(YUM),apt)
+PYTHON3_PKGS := python3
+else
+PYTHON3_PKGS := python3 python3.11 python3.11-pip
+endif
+
 .PHONY: python3
 python3:
-	sudo $(YUM) install -y python3 python3.11 python3.11-pip
+	sudo $(YUM) install -y $(PYTHON3_PKGS)
 
 .PHONY: perl
 perl:
