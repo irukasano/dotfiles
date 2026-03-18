@@ -99,9 +99,36 @@ merge_base="$(git merge-base "origin/$base_branch" HEAD 2>/dev/null || true)"
 commit_count="$(git rev-list --count "${merge_base}..HEAD")"
 [[ "$commit_count" -gt 0 ]] || die "no commits found between origin/$base_branch and HEAD"
 
-commits_md="$(
-  git log --reverse --pretty=format:'- %s (%h)' "${merge_base}..HEAD"
-)"
+build_changes_md() {
+  git log --reverse --format='%h%x1f%s%x1f%b%x1e' "${merge_base}..HEAD" | perl -0ne '
+    my @records = split /\x1e/, $_;
+    my $first = 1;
+
+    for my $record (@records) {
+      next unless $record =~ /\S/;
+      $record =~ s/\A\s+//;
+      $record =~ s/\s+\z//;
+
+      my ($hash, $subject, $body) = split /\x1f/, $record, 3;
+      $body //= q{};
+      $body =~ s/\A\s+//;
+      $body =~ s/\s+\z//;
+
+      print "\n" unless $first;
+      $first = 0;
+
+      print "### $subject (`$hash`)\n\n";
+
+      if (length $body) {
+        print "$body\n";
+      }
+
+      print "\n";
+    }
+  '
+}
+
+changes_md="$(build_changes_md)"
 
 # Issue番号抽出:
 # 1. title から fixes/closes/resolves #123
@@ -190,7 +217,7 @@ $summary_md
 
 ## Changes
 
-$commits_md
+$changes_md
 
 ## Comment
 
@@ -219,5 +246,3 @@ gh pr create \
   "${passthrough_args[@]}" \
   --title "$title" \
   --body-file "$body_file"
-
-
