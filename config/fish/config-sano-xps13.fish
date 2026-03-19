@@ -1,0 +1,1 @@
+set -x USING_TAILSCALE 1

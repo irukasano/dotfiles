@@ -153,6 +153,7 @@ starship:
 	else \
 		curl -sS https://starship.rs/install.sh | sh; \
 	fi
+	@mkdir -p $$HOME/.config
 	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
 
 .PHONY: fish
@@ -162,8 +163,10 @@ fish:
 .PHONY: fish-link
 fish-link:
 	@mkdir -p $$HOME/.config/fish
-	@ln -snf "$$HOME/dotfiles/config/fish/config.fish"  "$$HOME/.config/fish/config.fish"
-	@ln -snf "$$HOME/dotfiles/config/fish/fish_plugins" "$$HOME/.config/fish/fish_plugins"
+	@ln -sf "$$HOME/dotfiles/config/fish/config.fish"  "$$HOME/.config/fish/config.fish"
+	@host="$$(hostname -s)"; \
+	ln -sf "$(HOME)/dotfiles/config/fish/config-$$host.fish" "$(HOME)/.config/fish/config-$$host.fish"
+	@ln -sf "$$HOME/dotfiles/config/fish/fish_plugins" "$$HOME/.config/fish/fish_plugins"
 	@# 自作 functions がある場合のみ、ファイル単位でリンク（生成物混入を避ける）
 	@if [ -d "$$HOME/dotfiles/config/fish/functions" ]; then \
 	  mkdir -p "$$HOME/.config/fish/functions"; \
