@@ -101,7 +101,7 @@ set -x GPG_TTY (tty)
 
 # ホスト別設定ファイル
 set -l host (hostname -s)
-set -l host_config ~/.config/fish/conf.d/config-$host.fish
+set -l host_config ~/.config/fish/config-$host.fish
 if test -r $host_config
     source $host_config
 end
