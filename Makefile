@@ -6,11 +6,17 @@ NVM_URL             := https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/inst
 
 SRC_DIR             := $(HOME)/src
 
-.PHONY: all
-all: init dotfiles-all fish-all nvim-all ag fd gh osc52
+.PHONY: help
+help: ## タスク一覧を表示
+	@grep -E '^[a-zA-Z0-9_.-]+:.*## ' $(MAKEFILE_LIST) | \
+		awk 'BEGIN {FS = ":.*## "}; {printf "%-20s %s\n", $$1, $$2}'
 
-.PHONY: dotfiles-all
-dotfiles-all: python3 grcat pandoc source-highlight dotfiles-repo
+.PHONY: all
+all: base codex-all zellij yazi ## 全インストール(base+codex+zellij+yazi)
+
+.PHONY: base
+base: init osc52 tools-all fish-all nvim-all ## 共通インストール(osc52+tools+fish+nvim)
+
 
 .PHONY: init
 init:
@@ -18,105 +24,22 @@ init:
 	sudo $(YUM) install -y tar sysstat
 	sudo $(YUM) install -y kitty-terminfo
 
+#---------------------------------------------------------------------------------#
+# scripting runtimes
+#---------------------------------------------------------------------------------#
+ifeq ($(YUM),apt)
+PYTHON3_PKGS := python3
+else
+PYTHON3_PKGS := python3 python3.11 python3.11-pip
+endif
+
 .PHONY: python3
 python3:
-	sudo $(YUM) install -y python3
-
-.PHONY: rustup
-rustup:
-	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y
-
-.PHONY: cargo
-cargo:
-	test -x "$$HOME/.cargo/bin/cargo" || $(MAKE) rustup
+	sudo $(YUM) install -y $(PYTHON3_PKGS)
 
 .PHONY: perl
 perl:
 	sudo $(YUM) install -y perl
-
-.PHONY: grcat
-grcat:
-	sudo wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.12.orig.tar.gz -O /usr/local/src/grc_1.12.orig.tar.gz
-	cd /usr/local/src; sudo tar xzf grc_1.12.orig.tar.gz
-	cd /usr/local/src/grc-1.12; sudo ./install.sh
-
-.PHONY: pandoc
-pandoc:
-	sudo $(YUM) install -y pandoc
-
-.PHONY: source-highlight
-source-highlight:
-	sudo $(YUM) install -y source-highlight
-
-.PHONY: dotfiles-repo
-dotfiles-repo:
-	lesskey ~/dotfiles/.lesskey
-	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
-	cp -p ~/dotfiles/.my.cnf ~/
-
-.PHONY: ag
-ag:
-	#sudo $(YUM) install -y silversearcher-ag, ripgrep
-	sudo $(YUM) install -y ag ripgrep
-
-.PHONY: fd
-fd:
-	sudo $(YUM) install -y fd-find
-
-.PHONY: gh
-gh:
-	sudo $(YUM) install -y gh
-	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
-	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
-
-.PHONY: fzf
-fzf:
-	@if [ ! -d "$$HOME/.fzf" ]; then \
-		git clone --depth 1 https://github.com/junegunn/fzf.git $$HOME/.fzf; \
-	fi
-	@if [ ! -x "$$HOME/.fzf/bin/fzf" ]; then \
-		$$HOME/.fzf/install --bin; \
-	fi
-	@command -v fzf >/dev/null 2>&1 || sudo ln -sf $$HOME/.fzf/bin/fzf /usr/local/bin/fzf
-
-.PHONY: starship
-starship:
-	@if [ -x /usr/local/bin/starship ]; then \
-		echo "starship already installed at /usr/local/bin/starship; skipping install."; \
-	else \
-		curl -sS https://starship.rs/install.sh | sh; \
-	fi
-	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
-
-.PHONY: fish-all
-fish-all: fzf starship fish fish-link fish-plugins
-
-.PHONY: fish
-fish:
-	sudo $(YUM) install -y fish
-
-.PHONY: fish-link
-fish-link:
-	@mkdir -p $$HOME/.config/fish
-	@ln -snf "$$HOME/dotfiles/config/fish/config.fish"  "$$HOME/.config/fish/config.fish"
-	@ln -snf "$$HOME/dotfiles/config/fish/fish_plugins" "$$HOME/.config/fish/fish_plugins"
-	@# 自作 functions がある場合のみ、ファイル単位でリンク（生成物混入を避ける）
-	@if [ -d "$$HOME/dotfiles/config/fish/functions" ]; then \
-	  mkdir -p "$$HOME/.config/fish/functions"; \
-	  for f in "$$HOME"/dotfiles/config/fish/functions/*.fish; do \
-	    [ -e "$$f" ] || continue; \
-	    bn=$$(basename "$$f"); \
-	    ln -snf "$$f" "$$HOME/.config/fish/functions/$$bn"; \
-	  done; \
-	fi
-
-.PHONY: fish-plugins
-fish-plugins: fish-link
-	@fish -lc 'type -q fisher; or curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
-	@fish -lc 'fisher update'
-
-.PHONY: nvim-all
-nvim-all: nodejs nvim-repo
 
 .PHONY: nodejs-init
 nodejs-init:
@@ -139,15 +62,144 @@ nodejs: nodejs-init
 		echo 'nvm use "$$nvm_default_version" >/dev/null 2>&1 || true' >> $$HOME/.bashrc; \
 	}
 
-.PHONY: nvim-repo
-nvim-repo:
+#---------------------------------------------------------------------------------#
+# Compiled language toolchains
+#---------------------------------------------------------------------------------#
+.PHONY: rustup
+rustup:
+	curl --proto '=https' --tlsv1.2 -fsSL https://sh.rustup.rs | sh -s -- -y
+
+.PHONY: cargo
+cargo:
+	test -x "$$HOME/.cargo/bin/cargo" || $(MAKE) rustup
+
+#---------------------------------------------------------------------------------#
+# tools-all
+#---------------------------------------------------------------------------------#
+.PHONY: tools-all
+tools-all: init python3 grcat pandoc source-highlight dotfiles-repo ## 初期 dotfiles
+#---------------------------------------------------------------------------------#
+# grcat
+#---------------------------------------------------------------------------------#
+.PHONY: grcat
+grcat:
+	sudo wget http://kassiopeia.juls.savba.sk/~garabik/software/grc/grc_1.12.orig.tar.gz -O /usr/local/src/grc_1.12.orig.tar.gz
+	cd /usr/local/src; sudo tar xzf grc_1.12.orig.tar.gz
+	cd /usr/local/src/grc-1.12; sudo ./install.sh
+
+#---------------------------------------------------------------------------------#
+# pandoc
+#---------------------------------------------------------------------------------#
+.PHONY: pandoc
+pandoc:
+	sudo $(YUM) install -y pandoc
+
+#---------------------------------------------------------------------------------#
+# source-highlight
+#---------------------------------------------------------------------------------#
+.PHONY: source-highlight
+source-highlight:
+	sudo $(YUM) install -y source-highlight
+
+#---------------------------------------------------------------------------------#
+# searcher
+#---------------------------------------------------------------------------------#
+.PHONY: ag
+ag:
+	#sudo $(YUM) install -y silversearcher-ag, ripgrep
+	sudo $(YUM) install -y ag ripgrep fd-find
+
+#---------------------------------------------------------------------------------#
+# my dotfiles settings
+#---------------------------------------------------------------------------------#
+.PHONY: dotfiles-repo
+dotfiles-repo:
+	lesskey ~/dotfiles/.lesskey
+	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
+	cp -p ~/dotfiles/.my.cnf ~/
+
+#---------------------------------------------------------------------------------#
+# gh
+#---------------------------------------------------------------------------------#
+.PHONY: gh
+gh:
+	sudo $(YUM) install -y gh
+	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
+	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
+
+#---------------------------------------------------------------------------------#
+# fzf
+#---------------------------------------------------------------------------------#
+.PHONY: fzf
+fzf:
+	@if [ ! -d "$$HOME/.fzf" ]; then \
+		git clone --depth 1 https://github.com/junegunn/fzf.git $$HOME/.fzf; \
+	fi
+	@if [ ! -x "$$HOME/.fzf/bin/fzf" ]; then \
+		$$HOME/.fzf/install --bin; \
+	fi
+	@command -v fzf >/dev/null 2>&1 || sudo ln -sf $$HOME/.fzf/bin/fzf /usr/local/bin/fzf
+
+#---------------------------------------------------------------------------------#
+# fish-all
+#---------------------------------------------------------------------------------#
+.PHONY: fish-all
+fish-all: fzf starship fish fish-link fish-plugins
+
+.PHONY: starship
+starship:
+	@if [ -x /usr/local/bin/starship ]; then \
+		echo "starship already installed at /usr/local/bin/starship; skipping install."; \
+	else \
+		curl -sS https://starship.rs/install.sh | sh; \
+	fi
+	@mkdir -p $$HOME/.config
+	ln -sf $(PWD)/config/starship.toml $(HOME)/.config/starship.toml
+
+.PHONY: fish
+fish:
+	sudo $(YUM) install -y fish
+
+.PHONY: fish-link
+fish-link:
+	@mkdir -p $$HOME/.config/fish
+	@ln -sf "$$HOME/dotfiles/config/fish/config.fish"  "$$HOME/.config/fish/config.fish"
+	@host="$$(hostname -s)"; \
+	ln -sf "$(HOME)/dotfiles/config/fish/config-$$host.fish" "$(HOME)/.config/fish/config-$$host.fish"
+	@ln -sf "$$HOME/dotfiles/config/fish/fish_plugins" "$$HOME/.config/fish/fish_plugins"
+	@# 自作 functions がある場合のみ、ファイル単位でリンク（生成物混入を避ける）
+	@if [ -d "$$HOME/dotfiles/config/fish/functions" ]; then \
+	  mkdir -p "$$HOME/.config/fish/functions"; \
+	  for f in "$$HOME"/dotfiles/config/fish/functions/*.fish; do \
+	    [ -e "$$f" ] || continue; \
+	    bn=$$(basename "$$f"); \
+	    ln -snf "$$f" "$$HOME/.config/fish/functions/$$bn"; \
+	  done; \
+	fi
+
+.PHONY: fish-plugins
+fish-plugins: fish-link
+	@fish -lc 'type -q fisher; or curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
+	@fish -lc 'fisher update'
+
+#---------------------------------------------------------------------------------#
+# nvim-all
+#---------------------------------------------------------------------------------#
+.PHONY: nvim-all
+nvim-all: nodejs nvim-settings-repo
+
+.PHONY: nvim-settings-repo
+nvim-settings-repo:
 	mkdir -p ~/.vim
 	git clone https://github.com/irukasano/init.vim ~/.config/nvim
 	ln -s ~/.config/nvim/init.vim ~/.vimrc
 	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
 
+#---------------------------------------------------------------------------------#
+# codex-all
+#---------------------------------------------------------------------------------#
 .PHONY: codex-all
-codex-all: codex codex-gh-mcp codex-settings
+codex-all: codex codex-gh-mcp codex-settings ## codex-cli
 
 .PHONY: codex
 codex: nodejs
@@ -170,8 +222,7 @@ codex: nodejs
 
 
 .PHONY: codex-gh-mcp
-codex-gh-mcp:
-	sudo $(YUM) install -y python3.11 python3.11-pip
+codex-gh-mcp: python3
 	mkdir -p $(HOME)/mcp
 	if [ ! -d "$(HOME)/mcp/gh-mcp" ]; then \
 		git clone https://github.com/munch-group/gh-mcp.git $(HOME)/mcp/gh-mcp; \
@@ -197,10 +248,9 @@ codex-settings:
 	mkdir -p ~/.codex
 	ln -sf "$$HOME/dotfiles/config/codex/AGENTS.md" $$HOME/.codex
 
-.PHONY: uv
-uv:
-	curl -LsSf https://astral.sh/uv/install.sh | sh
-
+#---------------------------------------------------------------------------------#
+# tmux
+#---------------------------------------------------------------------------------#
 .PHONY: tmux
 tmux:
 	sudo $(YUM) install -y tmux
@@ -208,6 +258,9 @@ tmux:
 	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
 	tmux source ~/.tmux.conf
 
+#---------------------------------------------------------------------------------#
+# osc52
+#---------------------------------------------------------------------------------#
 .PHONY: osc52
 osc52:
 	sudo mkdir -p /usr/local/src
@@ -215,11 +268,11 @@ osc52:
 	sudo chmod +x /usr/local/src/osc52.sh
 	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
 
-.PHONY: develop
-develop: zellij git-gtr tig codex-all
-
+#---------------------------------------------------------------------------------#
+# zellij
+#---------------------------------------------------------------------------------#
 .PHONY: zellij
-zellij: gh cargo perl
+zellij: gh git-gtr cargo perl ## zellij multiplexer
 	mkdir -p "$$HOME/bin"
 	mkdir -p "$$HOME/.config/zellij/layouts"
 
@@ -244,6 +297,9 @@ git-gtr:
 	cd "$(SRC_DIR)/"; git clone https://github.com/coderabbitai/git-worktree-runner.git
 	cd "$(SRC_DIR)/git-worktree-runner" && ./install.sh
 
+#---------------------------------------------------------------------------------#
+# tig
+#---------------------------------------------------------------------------------#
 .PHONY: tig
 tig:
 	sudo $(YUM) -y install xmlto
@@ -255,15 +311,17 @@ tig:
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
 
-# --- yazi ------------------------------------------------------------
+#---------------------------------------------------------------------------------#
+# yazi
+#---------------------------------------------------------------------------------#
 ifeq ($(YUM),apt)
-YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip-full file chafa unzip librsvg2-bin
+YAZI_DEPS := poppler-utils ffmpegthumbnailer p7zip-full file chafa unzip librsvg2-bin
 else
-YAZI_DEPS := fd-find ripgrep poppler-utils ffmpegthumbnailer p7zip p7zip-plugins file chafa unzip librsvg2-tools
+YAZI_DEPS := poppler-utils ffmpegthumbnailer p7zip p7zip-plugins file chafa unzip librsvg2-tools
 endif
 
 .PHONY: yazi
-yazi: fzf
+yazi: fzf ag ## yazi filer
 	# deps (fzf は既存タスクで入る前提)
 	sudo $(YUM) install -y $(YAZI_DEPS)
 
@@ -303,3 +361,4 @@ yazi-plugins: yazi
 	ya pkg add yazi-rs/plugins:full-border
 	ya pkg add yazi-rs/plugins:chmod
 	ya pkg add dedukun/bookmarks
+
