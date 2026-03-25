@@ -21,8 +21,9 @@ base: init osc52 tools-all fish-all nvim-all ## 共通インストール(osc52+t
 .PHONY: init
 init:
 	sudo $(YUM) update
-	sudo $(YUM) install -y tar sysstat
-	sudo $(YUM) install -y kitty-terminfo
+	sudo $(YUM) install -y tar sysstat kitty-terminfo
+	sudo $(YUM) install -y gnupg pinentry-tty
+	sudo $(YUM) install --setopt=install_weak_deps=False pass
 
 #---------------------------------------------------------------------------------#
 # scripting runtimes
