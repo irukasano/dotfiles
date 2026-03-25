@@ -1,0 +1,32 @@
+#!/bin/sh
+set -eu
+
+if ! command -v pass >/dev/null 2>&1; then
+    echo "gh: pass コマンドが必要です。インストールしてください" >&2
+    exit 127
+fi
+
+token_name='github/cli-token'
+
+if ! pass show "$token_name" >/dev/null 2>&1; then
+    if [ -t 0 ] && [ -t 2 ]; then
+        echo "gh: $token_name が未設定です。これから pass insert します" >&2
+        pass insert "$token_name" || {
+            echo "gh: トークン登録に失敗しました" >&2
+            exit 1
+        }
+    else
+        echo "gh: $token_name が未設定です。先に 'pass insert $token_name' を実行してください" >&2
+        exit 1
+    fi
+fi
+
+token="$(pass show "$token_name" | head -n 1)"
+if [ -z "$token" ]; then
+    echo "gh: $token_name からトークンを取得できませんでした" >&2
+    exit 1
+fi
+
+export GH_TOKEN="$token"
+exec /usr/bin/gh "$@"
+
