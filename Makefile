@@ -125,6 +125,7 @@ dotfiles-repo:
 .PHONY: gh
 gh:
 	sudo $(YUM) install -y gh
+	@mkdir -p $$HOME/bin
 	ln -sf $(PWD)/bin/gh $(HOME)/bin/gh
 	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
 	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
