@@ -256,9 +256,16 @@ codex-settings:
 .PHONY: tmux
 tmux:
 	sudo $(YUM) install -y tmux
-	mkdir -p ~/.tmux
-	git clone https://github.com/tmux-plugins/tpm ~/.tmux/plugins/tpm
-	tmux source ~/.tmux.conf
+	mkdir -p "$$HOME/.config/tmux"
+	mkdir -p "$$HOME/.tmux/plugins"
+	ln -snf "$$HOME/dotfiles/config/.tmux.conf" "$$HOME/.config/.tmux.conf"
+	ln -snf "$$HOME/dotfiles/config/tmux/tmux.conf" "$$HOME/.config/tmux/tmux.conf"
+	if [ ! -d "$$HOME/.tmux/plugins/tpm/.git" ]; then \
+		git clone https://github.com/tmux-plugins/tpm "$$HOME/.tmux/plugins/tpm"; \
+	else \
+		git -C "$$HOME/.tmux/plugins/tpm" pull --ff-only; \
+	fi
+	@echo "tmux を起動して prefix + I で plugin を導入してください"
 
 #---------------------------------------------------------------------------------#
 # osc52
