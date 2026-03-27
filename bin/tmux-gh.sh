@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+LAYOUT_SCRIPT="$HOME/dotfiles/config/tmux/bin/layout-dev.sh"
+
 usage() {
   cat <<EOF
 Usage:
@@ -23,12 +25,19 @@ require_cmd() {
 open_dir_in_tmux() {
   local dir="$1"
   local tab_name="$2"
+  local session_name pane_id
 
   if [[ -n "${TMUX-}" ]]; then
-    tmux new-window -c "$dir" -n "$tab_name"
+    pane_id="$(tmux new-window -P -F '#{pane_id}' -c "$dir" -n "$tab_name")"
   else
+    IFS=$'	' read -r session_name pane_id <<<"$(tmux new-session -d -P -F '#{session_name}	#{pane_id}' -c "$dir" -n "$tab_name")"
+  fi
+
+  "$LAYOUT_SCRIPT" "$pane_id" "$dir"
+
+  if [[ -z "${TMUX-}" ]]; then
     cd "$dir"
-    exec tmux new-session -c "$dir" -n "$tab_name"
+    exec tmux attach-session -t "$session_name"
   fi
 }
 

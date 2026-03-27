@@ -254,7 +254,7 @@ codex-settings:
 # tmux
 #---------------------------------------------------------------------------------#
 .PHONY: tmux
-tmux:
+tmux: fish codex osc52 gh git-gtr
 	sudo $(YUM) install -y tmux
 	mkdir -p "$$HOME/.config/tmux"
 	mkdir -p "$$HOME/.tmux/plugins"
