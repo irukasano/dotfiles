@@ -8,6 +8,13 @@ fi
 
 token_name='github/cli-token'
 
+if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
+    current_tty=$(tty 2>/dev/null || true)
+    if [ -n "${current_tty:-}" ] && [ "$current_tty" != "not a tty" ]; then
+        export GPG_TTY="$current_tty"
+    fi
+fi
+
 if ! pass show "$token_name" >/dev/null 2>&1; then
     if [ -t 0 ] && [ -t 2 ]; then
         echo "gh: $token_name が未設定です。これから pass insert します" >&2

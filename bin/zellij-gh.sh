@@ -239,29 +239,33 @@ prompt_branch_name() {
 record_delim=$'\037'
 
 select_issue() {
-  local number title labels_csv updated_at display
+  local number title labels_csv updated_at display issue_rows
+
+  issue_rows="$(
+    gh issue list --state open --assignee @me --limit 200 \
+      --json number,title,labels,updatedAt \
+      --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")'
+  )"
 
   while IFS="$record_delim" read -r number title labels_csv updated_at; do
     display="$(build_issue_display "$number" "$title" "$labels_csv" "$updated_at")"
     printf '%s\t%s\t%s\t%s\n' "$display" "$number" "$title" "$labels_csv"
-  done < <(
-    gh issue list --state open --assignee @me --limit 200 \
-      --json number,title,labels,updatedAt \
-      --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")'
-  ) | fzf --ansi --delimiter=$'\t' --with-nth=1
+  done <<<"$issue_rows" | fzf --ansi --delimiter=$'\t' --with-nth=1
 }
 
 select_pr() {
-  local pr_number title branch_name author updated_at display
+  local pr_number title branch_name author updated_at display pr_rows
+
+  pr_rows="$(
+    gh pr list --state open --limit 200 \
+      --json number,title,headRefName,author,updatedAt \
+      --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")'
+  )"
 
   while IFS="$record_delim" read -r pr_number title branch_name author updated_at; do
     display="$(build_pr_display "$pr_number" "$title" "$branch_name" "$author" "$updated_at")"
     printf '%s\t%s\t%s\t%s\t%s\n' "$display" "$pr_number" "$title" "$branch_name" "$author"
-  done < <(
-    gh pr list --state open --limit 200 \
-      --json number,title,headRefName,author,updatedAt \
-      --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")'
-  ) | fzf --ansi --delimiter=$'\t' --with-nth=1
+  done <<<"$pr_rows" | fzf --ansi --delimiter=$'\t' --with-nth=1
 }
 
 create_issue_worktree() {
