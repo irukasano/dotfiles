@@ -260,6 +260,7 @@ tmux:
 	mkdir -p "$$HOME/.tmux/plugins"
 	ln -snf "$$HOME/dotfiles/config/.tmux.conf" "$$HOME/.config/.tmux.conf"
 	ln -snf "$$HOME/dotfiles/config/tmux/tmux.conf" "$$HOME/.config/tmux/tmux.conf"
+	ln -sf "$$HOME/dotfiles/bin/tmux-gh.sh" "$$HOME/bin/tmux-gh.sh"
 	if [ ! -d "$$HOME/.tmux/plugins/tpm/.git" ]; then \
 		git clone https://github.com/tmux-plugins/tpm "$$HOME/.tmux/plugins/tpm"; \
 	else \
