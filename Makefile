@@ -125,6 +125,7 @@ dotfiles-repo:
 .PHONY: gh
 gh:
 	sudo $(YUM) install -y gh
+	@mkdir -p $$HOME/bin
 	ln -sf $(PWD)/bin/gh $(HOME)/bin/gh
 	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
 	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
@@ -254,7 +255,7 @@ codex-settings:
 # tmux
 #---------------------------------------------------------------------------------#
 .PHONY: tmux
-tmux: fish codex osc52 gh git-gtr
+tmux: fish-all codex osc52 gh git-gtr
 	sudo $(YUM) install -y tmux
 	mkdir -p "$$HOME/.config/tmux"
 	mkdir -p "$$HOME/.tmux/plugins"
