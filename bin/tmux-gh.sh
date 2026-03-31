@@ -2,6 +2,8 @@
 set -euo pipefail
 
 LAYOUT_SCRIPT="$HOME/dotfiles/config/tmux/bin/layout-dev.sh"
+SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
+CACHE_TTL_SECONDS=60
 
 usage() {
   cat <<EOF
@@ -20,6 +22,46 @@ require_cmd() {
     echo "Error: '$cmd' is required." >&2
     exit 1
   fi
+}
+
+cache_dir() {
+  local user_name="${USER:-user}"
+  printf '/tmp/tmux-gh-%s\n' "$user_name"
+}
+
+cache_file_for_mode() {
+  local mode="$1"
+  printf '%s/%s.list' "$(cache_dir)" "$mode"
+}
+
+cache_meta_file_for_mode() {
+  local mode="$1"
+  printf '%s/%s.updated_at' "$(cache_dir)" "$mode"
+}
+
+ensure_cache_dir() {
+  mkdir -p "$(cache_dir)"
+}
+
+current_epoch() {
+  date +%s
+}
+
+cache_is_fresh() {
+  local mode="$1"
+  local cache_file meta_file now updated_at age
+
+  cache_file="$(cache_file_for_mode "$mode")"
+  meta_file="$(cache_meta_file_for_mode "$mode")"
+
+  [[ -f "$cache_file" && -f "$meta_file" ]] || return 1
+
+  updated_at="$(<"$meta_file")"
+  [[ "$updated_at" =~ ^[0-9]+$ ]] || return 1
+
+  now="$(current_epoch)"
+  age=$((now - updated_at))
+  (( age >= 0 && age < CACHE_TTL_SECONDS ))
 }
 
 open_dir_in_tmux() {
@@ -184,6 +226,77 @@ for row in rows:
 ' "$mode"
 }
 
+fetch_issue_rows() {
+  gh issue list --state open --assignee @me --limit 200 \
+    --json number,title,labels,updatedAt \
+    --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")' \
+    | format_selection_rows issue
+}
+
+fetch_pr_rows() {
+  gh pr list --state open --limit 200 \
+    --json number,title,headRefName,author,updatedAt \
+    --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")' \
+    | format_selection_rows pr
+}
+
+write_cache() {
+  local mode="$1"
+  local cache_file meta_file tmp_file tmp_meta
+
+  ensure_cache_dir
+  cache_file="$(cache_file_for_mode "$mode")"
+  meta_file="$(cache_meta_file_for_mode "$mode")"
+  tmp_file="${cache_file}.tmp.$$"
+  tmp_meta="${meta_file}.tmp.$$"
+
+  cat >"$tmp_file"
+  printf '%s\n' "$(current_epoch)" >"$tmp_meta"
+  mv "$tmp_file" "$cache_file"
+  mv "$tmp_meta" "$meta_file"
+}
+
+print_cached_rows() {
+  local mode="$1"
+  cat "$(cache_file_for_mode "$mode")"
+}
+
+list_rows() {
+  local mode="$1"
+  local force_refresh="${2:-0}"
+
+  if [[ "$force_refresh" != "1" ]] && cache_is_fresh "$mode"; then
+    print_cached_rows "$mode"
+    return 0
+  fi
+
+  case "$mode" in
+    issue)
+      fetch_issue_rows | write_cache issue
+      ;;
+    pr)
+      fetch_pr_rows | write_cache pr
+      ;;
+    *)
+      echo "Error: unsupported mode '$mode'." >&2
+      exit 1
+      ;;
+  esac
+
+  print_cached_rows "$mode"
+}
+
+build_reload_command() {
+  local subcommand="$1"
+  local refresh_cmd fallback_cmd reload_cmd
+
+  printf -v refresh_cmd '%q %q %q' "$SCRIPT_PATH" "$subcommand" "--refresh"
+  printf -v fallback_cmd '%q %q' "$SCRIPT_PATH" "$subcommand"
+  printf -v reload_cmd '%s || %s' "$refresh_cmd" "$fallback_cmd"
+
+  printf '%s\n' "$reload_cmd"
+}
+
 prompt_branch_name() {
   local default_value="$1"
   local branch_name
@@ -204,19 +317,29 @@ prompt_branch_name() {
 }
 
 select_issue() {
-  gh issue list --state open --assignee @me --limit 200 \
-    --json number,title,labels,updatedAt \
-    --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")' \
-    | format_selection_rows issue \
-    | fzf --ansi --delimiter=$'\t' --with-nth=1
+  local reload_cmd
+
+  reload_cmd="$(build_reload_command __list-issue --refresh)"
+  list_rows issue \
+    | fzf \
+      --ansi \
+      --delimiter=$'\t' \
+      --with-nth=1 \
+      --header='ctrl-r: refresh issues (TTL 60s)' \
+      --bind "ctrl-r:reload($reload_cmd)+clear-query"
 }
 
 select_pr() {
-  gh pr list --state open --limit 200 \
-    --json number,title,headRefName,author,updatedAt \
-    --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")' \
-    | format_selection_rows pr \
-    | fzf --ansi --delimiter=$'\t' --with-nth=1
+  local reload_cmd
+
+  reload_cmd="$(build_reload_command __list-pr --refresh)"
+  list_rows pr \
+    | fzf \
+      --ansi \
+      --delimiter=$'\t' \
+      --with-nth=1 \
+      --header='ctrl-r: refresh PRs (TTL 60s)' \
+      --bind "ctrl-r:reload($reload_cmd)+clear-query"
 }
 
 create_issue_worktree() {
@@ -289,17 +412,22 @@ main() {
   require_cmd git
   require_cmd tmux
 
-  if [[ $# -ne 1 ]]; then
-    usage
-    exit 1
-  fi
-
-  case "$1" in
+  case "${1:-}" in
     issue)
+      [[ $# -eq 1 ]] || { usage; exit 1; }
       handle_issue
       ;;
     pr)
+      [[ $# -eq 1 ]] || { usage; exit 1; }
       handle_pr
+      ;;
+    __list-issue)
+      [[ $# -le 2 ]] || { usage; exit 1; }
+      list_rows issue "${2:+1}"
+      ;;
+    __list-pr)
+      [[ $# -le 2 ]] || { usage; exit 1; }
+      list_rows pr "${2:+1}"
       ;;
     *)
       usage
