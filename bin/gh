@@ -1,6 +1,20 @@
 #!/bin/sh
 set -eu
 
+if [ "${1:-}" = "--ensure-auth" ]; then
+    ensure_auth_only=1
+    shift
+else
+    ensure_auth_only=0
+fi
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    if [ "$ensure_auth_only" -eq 1 ]; then
+        exit 0
+    fi
+    exec /usr/bin/gh "$@"
+fi
+
 if ! command -v pass >/dev/null 2>&1; then
     echo "gh: pass コマンドが必要です。インストールしてください" >&2
     exit 127
@@ -34,6 +48,9 @@ if [ -z "$token" ]; then
     exit 1
 fi
 
+if [ "$ensure_auth_only" -eq 1 ]; then
+    exit 0
+fi
+
 export GH_TOKEN="$token"
 exec /usr/bin/gh "$@"
-

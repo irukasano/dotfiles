@@ -24,6 +24,10 @@ require_cmd() {
   fi
 }
 
+ensure_gh_auth() {
+  gh --ensure-auth >/dev/null
+}
+
 cache_dir() {
   local user_name="${USER:-user}"
   printf '/tmp/tmux-gh-%s\n' "$user_name"
@@ -37,6 +41,18 @@ cache_file_for_mode() {
 cache_meta_file_for_mode() {
   local mode="$1"
   printf '%s/%s.updated_at' "$(cache_dir)" "$mode"
+}
+
+preview_cache_file() {
+  local mode="$1"
+  local item_id="$2"
+  printf '%s/preview-%s-%s.txt' "$(cache_dir)" "$mode" "$item_id"
+}
+
+preview_cache_meta_file() {
+  local mode="$1"
+  local item_id="$2"
+  printf '%s/preview-%s-%s.updated_at' "$(cache_dir)" "$mode" "$item_id"
 }
 
 ensure_cache_dir() {
@@ -53,6 +69,24 @@ cache_is_fresh() {
 
   cache_file="$(cache_file_for_mode "$mode")"
   meta_file="$(cache_meta_file_for_mode "$mode")"
+
+  [[ -f "$cache_file" && -f "$meta_file" ]] || return 1
+
+  updated_at="$(<"$meta_file")"
+  [[ "$updated_at" =~ ^[0-9]+$ ]] || return 1
+
+  now="$(current_epoch)"
+  age=$((now - updated_at))
+  (( age >= 0 && age < CACHE_TTL_SECONDS ))
+}
+
+preview_cache_is_fresh() {
+  local mode="$1"
+  local item_id="$2"
+  local cache_file meta_file now updated_at age
+
+  cache_file="$(preview_cache_file "$mode" "$item_id")"
+  meta_file="$(preview_cache_meta_file "$mode" "$item_id")"
 
   [[ -f "$cache_file" && -f "$meta_file" ]] || return 1
 
@@ -226,6 +260,92 @@ for row in rows:
 ' "$mode"
 }
 
+format_preview_json() {
+  local mode="$1"
+
+  python3 -c '
+import json
+import sys
+
+mode = sys.argv[1]
+payload = json.load(sys.stdin)
+
+
+def join_names(values):
+    names = []
+    for value in values or []:
+        name = value.get("name") or value.get("login") or ""
+        if name:
+            names.append(name)
+    return ", ".join(names) if names else "-"
+
+
+def text(value):
+    return value if value else "-"
+
+
+if mode == "issue":
+    number = payload.get("number", "-")
+    title = payload.get("title", "")
+    state = text(payload.get("state"))
+    author = text((payload.get("author") or {}).get("login"))
+    assignees = join_names(payload.get("assignees"))
+    labels = join_names(payload.get("labels"))
+    updated_at = text(payload.get("updatedAt"))
+    url = text(payload.get("url"))
+    body = payload.get("body") or "(no body)"
+    lines = [
+        f"# Issue #{number}: {title}",
+        "",
+        f"State: {state}",
+        f"Author: {author}",
+        f"Assignees: {assignees}",
+        f"Labels: {labels}",
+        f"Updated: {updated_at}",
+        f"URL: {url}",
+        "",
+        "Body",
+        "----",
+        body,
+    ]
+elif mode == "pr":
+    number = payload.get("number", "-")
+    title = payload.get("title", "")
+    state = text(payload.get("state"))
+    author = text((payload.get("author") or {}).get("login"))
+    assignees = join_names(payload.get("assignees"))
+    labels = join_names(payload.get("labels"))
+    base_ref = text(payload.get("baseRefName"))
+    head_ref = text(payload.get("headRefName"))
+    review = text(payload.get("reviewDecision"))
+    merge_state = text(payload.get("mergeStateStatus"))
+    updated_at = text(payload.get("updatedAt"))
+    url = text(payload.get("url"))
+    body = payload.get("body") or "(no body)"
+    lines = [
+        f"# PR #{number}: {title}",
+        "",
+        f"State: {state}",
+        f"Author: {author}",
+        f"Assignees: {assignees}",
+        f"Labels: {labels}",
+        f"Base/Head: {base_ref} <- {head_ref}",
+        f"Review: {review}",
+        f"Merge: {merge_state}",
+        f"Updated: {updated_at}",
+        f"URL: {url}",
+        "",
+        "Body",
+        "----",
+        body,
+    ]
+else:
+    raise SystemExit(f"unsupported mode: {mode}")
+
+print("\n".join(lines))
+' "$mode"
+}
+
 fetch_issue_rows() {
   gh issue list --state open --assignee @me --limit 200 \
     --json number,title,labels,updatedAt \
@@ -238,6 +358,22 @@ fetch_pr_rows() {
     --json number,title,headRefName,author,updatedAt \
     --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")' \
     | format_selection_rows pr
+}
+
+fetch_issue_preview() {
+  local issue_number="$1"
+
+  gh issue view "$issue_number" \
+    --json number,title,state,author,assignees,labels,updatedAt,url,body \
+    | format_preview_json issue
+}
+
+fetch_pr_preview() {
+  local pr_number="$1"
+
+  gh pr view "$pr_number" \
+    --json number,title,state,author,assignees,labels,updatedAt,url,body,baseRefName,headRefName,reviewDecision,mergeStateStatus \
+    | format_preview_json pr
 }
 
 write_cache() {
@@ -261,9 +397,74 @@ print_cached_rows() {
   cat "$(cache_file_for_mode "$mode")"
 }
 
+write_preview_cache() {
+  local mode="$1"
+  local item_id="$2"
+  local cache_file meta_file tmp_file tmp_meta
+
+  ensure_cache_dir
+  cache_file="$(preview_cache_file "$mode" "$item_id")"
+  meta_file="$(preview_cache_meta_file "$mode" "$item_id")"
+  tmp_file="${cache_file}.tmp.$$"
+  tmp_meta="${meta_file}.tmp.$$"
+
+  cat >"$tmp_file"
+  printf '%s\n' "$(current_epoch)" >"$tmp_meta"
+  mv "$tmp_file" "$cache_file"
+  mv "$tmp_meta" "$meta_file"
+}
+
+print_cached_preview() {
+  local mode="$1"
+  local item_id="$2"
+  cat "$(preview_cache_file "$mode" "$item_id")"
+}
+
+preview_item() {
+  local mode="$1"
+  local item_id="${2:-}"
+  local force_refresh="${3:-0}"
+
+  [[ -n "$item_id" ]] || exit 0
+  ensure_cache_dir
+
+  if [[ "$force_refresh" != "1" ]] && preview_cache_is_fresh "$mode" "$item_id"; then
+    print_cached_preview "$mode" "$item_id"
+    return 0
+  fi
+
+  case "$mode" in
+    issue)
+      fetch_issue_preview "$item_id" | write_preview_cache issue "$item_id"
+      ;;
+    pr)
+      fetch_pr_preview "$item_id" | write_preview_cache pr "$item_id"
+      ;;
+    *)
+      echo "Error: unsupported mode '$mode'." >&2
+      exit 1
+      ;;
+  esac
+
+  print_cached_preview "$mode" "$item_id"
+}
+
+clear_preview_cache() {
+  local mode="$1"
+  local pattern path
+
+  pattern="$(cache_dir)/preview-${mode}-"*
+  for path in $pattern; do
+    [[ -e "$path" ]] || continue
+    rm -f "$path"
+  done
+}
+
 list_rows() {
   local mode="$1"
   local force_refresh="${2:-0}"
+
+  ensure_cache_dir
 
   if [[ "$force_refresh" != "1" ]] && cache_is_fresh "$mode"; then
     print_cached_rows "$mode"
@@ -297,6 +498,22 @@ build_reload_command() {
   printf '%s\n' "$reload_cmd"
 }
 
+build_preview_command() {
+  local subcommand="$1"
+  local preview_cmd
+
+  printf -v preview_cmd '%q %q %s || true' "$SCRIPT_PATH" "$subcommand" '{2}'
+  printf '%s\n' "$preview_cmd"
+}
+
+build_clear_preview_command() {
+  local subcommand="$1"
+  local clear_cmd
+
+  printf -v clear_cmd '%q %q' "$SCRIPT_PATH" "$subcommand"
+  printf '%s\n' "$clear_cmd"
+}
+
 prompt_branch_name() {
   local default_value="$1"
   local branch_name
@@ -317,29 +534,37 @@ prompt_branch_name() {
 }
 
 select_issue() {
-  local reload_cmd
+  local reload_cmd preview_cmd clear_preview_cmd
 
   reload_cmd="$(build_reload_command __list-issue --refresh)"
+  preview_cmd="$(build_preview_command __preview-issue)"
+  clear_preview_cmd="$(build_clear_preview_command __clear-preview-issue)"
   list_rows issue \
     | fzf \
       --ansi \
       --delimiter=$'\t' \
       --with-nth=1 \
+      --preview "$preview_cmd" \
+      --preview-window 'right,60%,border-left,wrap' \
       --header='ctrl-r: refresh issues (TTL 60s)' \
-      --bind "ctrl-r:reload($reload_cmd)+clear-query"
+      --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
 }
 
 select_pr() {
-  local reload_cmd
+  local reload_cmd preview_cmd clear_preview_cmd
 
   reload_cmd="$(build_reload_command __list-pr --refresh)"
+  preview_cmd="$(build_preview_command __preview-pr)"
+  clear_preview_cmd="$(build_clear_preview_command __clear-preview-pr)"
   list_rows pr \
     | fzf \
       --ansi \
       --delimiter=$'\t' \
       --with-nth=1 \
+      --preview "$preview_cmd" \
+      --preview-window 'right,60%,border-left,wrap' \
       --header='ctrl-r: refresh PRs (TTL 60s)' \
-      --bind "ctrl-r:reload($reload_cmd)+clear-query"
+      --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
 }
 
 create_issue_worktree() {
@@ -411,6 +636,7 @@ main() {
   require_cmd fzf
   require_cmd git
   require_cmd tmux
+  ensure_gh_auth
 
   case "${1:-}" in
     issue)
@@ -428,6 +654,22 @@ main() {
     __list-pr)
       [[ $# -le 2 ]] || { usage; exit 1; }
       list_rows pr "${2:+1}"
+      ;;
+    __preview-issue)
+      [[ $# -eq 2 ]] || exit 0
+      preview_item issue "$2"
+      ;;
+    __preview-pr)
+      [[ $# -eq 2 ]] || exit 0
+      preview_item pr "$2"
+      ;;
+    __clear-preview-issue)
+      [[ $# -eq 1 ]] || exit 0
+      clear_preview_cache issue
+      ;;
+    __clear-preview-pr)
+      [[ $# -eq 1 ]] || exit 0
+      clear_preview_cache pr
       ;;
     *)
       usage
