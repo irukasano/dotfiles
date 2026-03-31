@@ -3,7 +3,7 @@ set -euo pipefail
 
 LAYOUT_SCRIPT="$HOME/dotfiles/config/tmux/bin/layout-dev.sh"
 SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
-CACHE_TTL_SECONDS=60
+CACHE_TTL_SECONDS=300
 
 usage() {
   cat <<EOF
@@ -13,6 +13,9 @@ Usage:
 
   $(basename "$0") pr
     - open open PRs, then open or create a matching worktree in tmux
+
+  $(basename "$0") file
+    - select files from open PRs, then open or create the matching PR worktree in tmux
 EOF
 }
 
@@ -255,6 +258,16 @@ for row in rows:
             f"\033[2m{format_updated_at(updated_at)}\033[0m"
         )
         print("\t".join([display, number, title, branch_name, author]))
+    elif mode == "file":
+        file_path, number, title, branch_name, created_at = (row + [""] * 5)[:5]
+        display = (
+            f"{fit_display_width(file_path, 56)}  "
+            f"#{number:<6} "
+            f"{fit_display_width(title, 44)}  "
+            f"{fit_display_width(branch_name, 20)}  "
+            f"\033[2m{format_updated_at(created_at)}\033[0m"
+        )
+        print("\t".join([display, number, file_path, title, branch_name, created_at]))
     else:
         raise SystemExit(f"unsupported mode: {mode}")
 ' "$mode"
@@ -360,6 +373,54 @@ fetch_pr_rows() {
     | format_selection_rows pr
 }
 
+fetch_file_rows() {
+  python3 -c '
+import json
+import subprocess
+
+prs = json.loads(
+    subprocess.check_output(
+        [
+            "gh",
+            "pr",
+            "list",
+            "--state",
+            "open",
+            "--limit",
+            "200",
+            "--json",
+            "number,title,headRefName,createdAt",
+        ],
+        text=True,
+    )
+)
+
+separator = "\x1f"
+
+for pr in prs:
+    pr_number = str(pr["number"])
+    title = pr.get("title", "")
+    branch_name = pr.get("headRefName", "")
+    created_at = pr.get("createdAt", "")
+    filenames = subprocess.check_output(
+        [
+            "gh",
+            "api",
+            f"repos/:owner/:repo/pulls/{pr_number}/files",
+            "--paginate",
+            "--jq",
+            ".[].filename",
+        ],
+        text=True,
+    ).splitlines()
+
+    for file_path in filenames:
+        if not file_path:
+            continue
+        print(separator.join([file_path, pr_number, title, branch_name, created_at]))
+' | LC_ALL=C sort | format_selection_rows file
+}
+
 fetch_issue_preview() {
   local issue_number="$1"
 
@@ -440,6 +501,9 @@ preview_item() {
     pr)
       fetch_pr_preview "$item_id" | write_preview_cache pr "$item_id"
       ;;
+    file)
+      fetch_pr_preview "$item_id" | write_preview_cache file "$item_id"
+      ;;
     *)
       echo "Error: unsupported mode '$mode'." >&2
       exit 1
@@ -477,6 +541,9 @@ list_rows() {
       ;;
     pr)
       fetch_pr_rows | write_cache pr
+      ;;
+    file)
+      fetch_file_rows | write_cache file
       ;;
     *)
       echo "Error: unsupported mode '$mode'." >&2
@@ -546,7 +613,7 @@ select_issue() {
       --with-nth=1 \
       --preview "$preview_cmd" \
       --preview-window 'right,60%,border-left,wrap' \
-      --header='ctrl-r: refresh issues (TTL 60s)' \
+      --header='ctrl-r: refresh issues (TTL 300s)' \
       --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
 }
 
@@ -563,7 +630,24 @@ select_pr() {
       --with-nth=1 \
       --preview "$preview_cmd" \
       --preview-window 'right,60%,border-left,wrap' \
-      --header='ctrl-r: refresh PRs (TTL 60s)' \
+      --header='ctrl-r: refresh PRs (TTL 300s)' \
+      --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
+}
+
+select_file() {
+  local reload_cmd preview_cmd clear_preview_cmd
+
+  reload_cmd="$(build_reload_command __list-file --refresh)"
+  preview_cmd="$(build_preview_command __preview-file)"
+  clear_preview_cmd="$(build_clear_preview_command __clear-preview-file)"
+  list_rows file \
+    | fzf \
+      --ansi \
+      --delimiter=$'\t' \
+      --with-nth=1 \
+      --preview "$preview_cmd" \
+      --preview-window 'right,60%,border-left,wrap' \
+      --header='ctrl-r: refresh PR files (TTL 300s)' \
       --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
 }
 
@@ -631,6 +715,19 @@ handle_pr() {
   create_pr_worktree "$pr_number" "$branch_name"
 }
 
+handle_file() {
+  local selected display pr_number file_path title branch_name created_at
+
+  selected="$(select_file || true)"
+  if [[ -z "$selected" ]]; then
+    echo "No file selected."
+    exit 0
+  fi
+
+  IFS=$'\t' read -r display pr_number file_path title branch_name created_at <<<"$selected"
+  create_pr_worktree "$pr_number" "$branch_name"
+}
+
 main() {
   require_cmd gh
   require_cmd fzf
@@ -647,6 +744,10 @@ main() {
       [[ $# -eq 1 ]] || { usage; exit 1; }
       handle_pr
       ;;
+    file)
+      [[ $# -eq 1 ]] || { usage; exit 1; }
+      handle_file
+      ;;
     __list-issue)
       [[ $# -le 2 ]] || { usage; exit 1; }
       list_rows issue "${2:+1}"
@@ -654,6 +755,10 @@ main() {
     __list-pr)
       [[ $# -le 2 ]] || { usage; exit 1; }
       list_rows pr "${2:+1}"
+      ;;
+    __list-file)
+      [[ $# -le 2 ]] || { usage; exit 1; }
+      list_rows file "${2:+1}"
       ;;
     __preview-issue)
       [[ $# -eq 2 ]] || exit 0
@@ -663,6 +768,10 @@ main() {
       [[ $# -eq 2 ]] || exit 0
       preview_item pr "$2"
       ;;
+    __preview-file)
+      [[ $# -eq 2 ]] || exit 0
+      preview_item file "$2"
+      ;;
     __clear-preview-issue)
       [[ $# -eq 1 ]] || exit 0
       clear_preview_cache issue
@@ -670,6 +779,10 @@ main() {
     __clear-preview-pr)
       [[ $# -eq 1 ]] || exit 0
       clear_preview_cache pr
+      ;;
+    __clear-preview-file)
+      [[ $# -eq 1 ]] || exit 0
+      clear_preview_cache file
       ;;
     *)
       usage
