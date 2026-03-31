@@ -103,37 +103,22 @@ normalize_slug() {
   printf '%s\n' "$slug"
 }
 
-char_display_width() {
-  local ch="$1"
+format_selection_rows() {
+  local mode="$1"
 
-  if [[ "$ch" =~ [[:ascii:]] ]]; then
-    printf '1\n'
-  else
-    printf '2\n'
-  fi
-}
-
-fit_display_width() {
-  local text="$1"
-  local width="$2"
-
-  python3 - "$text" "$width" <<'PY'
+  python3 -c '
 import sys
 import unicodedata
 
-text = sys.argv[1]
-width = int(sys.argv[2])
+mode = sys.argv[1]
+rows = [line.rstrip("\n").split("\x1f") for line in sys.stdin]
 
-ellipsis = "..."
-ellipsis_width = 3
+ELLIPSIS = "..."
+ELLIPSIS_WIDTH = 3
 
 
 def char_width(ch: str) -> int:
-    if not ch:
-        return 0
-    if unicodedata.combining(ch):
-        return 0
-    if ch == "\0":
+    if not ch or ch == "\0" or unicodedata.combining(ch):
         return 0
     if unicodedata.east_asian_width(ch) in {"F", "W"}:
         return 2
@@ -143,82 +128,60 @@ def char_width(ch: str) -> int:
 def display_width(value: str) -> int:
     return sum(char_width(ch) for ch in value)
 
-if width <= 0:
-    print("")
-    sys.exit(0)
 
-if width <= ellipsis_width:
-    print(ellipsis[:width].ljust(width))
-    sys.exit(0)
+def fit_display_width(text: str, width: int) -> str:
+    if width <= 0:
+        return ""
+    if width <= ELLIPSIS_WIDTH:
+        return ELLIPSIS[:width].ljust(width)
 
-result = ""
-current = 0
+    result = []
+    current = 0
 
-for ch in text:
-    w = char_width(ch)
+    for ch in text:
+        w = char_width(ch)
+        if current + w > width:
+            while current + ELLIPSIS_WIDTH > width and result:
+                current -= char_width(result.pop())
+            result.append(ELLIPSIS)
+            current += ELLIPSIS_WIDTH
+            break
+        result.append(ch)
+        current += w
 
-    if current + w > width:
-        while current + ellipsis_width > width and result:
-            last = result[-1]
-            current -= char_width(last)
-            result = result[:-1]
+    rendered = "".join(result)
+    return rendered + (" " * max(width - display_width(rendered), 0))
 
-        result += ellipsis
-        current += ellipsis_width
-        break
 
-    result += ch
-    current += w
+def format_updated_at(updated_at: str) -> str:
+    if not updated_at:
+        return "-"
+    return updated_at[:16].replace("T", " ")
 
-print(result + (" " * max(width - display_width(result), 0)))
-PY
-}
 
-pad_for_display() {
-  fit_display_width "${1:-}" "$2"
-}
-
-format_updated_at() {
-  local updated_at="${1:-}"
-
-  if [[ -z "$updated_at" ]]; then
-    printf '%s\n' "-"
-    return 0
-  fi
-
-  printf '%s\n' "${updated_at:0:16}" | tr 'T' ' '
-}
-
-build_issue_display() {
-  local issue_number="$1"
-  local title="$2"
-  local labels_csv="$3"
-  local updated_at="$4"
-  local updated_text
-
-  updated_text="$(format_updated_at "$updated_at")"
-  printf '#%-6s %s  %s  \033[2m%s\033[0m\n' \
-    "$issue_number" \
-    "$(pad_for_display "$title" 60)" \
-    "$(pad_for_display "$labels_csv" 26)" \
-    "$updated_text"
-}
-
-build_pr_display() {
-  local pr_number="$1"
-  local title="$2"
-  local branch_name="$3"
-  local author="$4"
-  local updated_at="$5"
-  local updated_text
-
-  updated_text="$(format_updated_at "$updated_at")"
-  printf '#%-6s %s  %s  %s  \033[2m%s\033[0m\n' \
-    "$pr_number" \
-    "$(pad_for_display "$title" 60)" \
-    "$(pad_for_display "$branch_name" 20)" \
-    "$(pad_for_display "$author" 16)" \
-    "$updated_text"
+for row in rows:
+    if mode == "issue":
+        number, title, labels_csv, updated_at = (row + [""] * 4)[:4]
+        display = (
+            f"#{number:<6} "
+            f"{fit_display_width(title, 60)}  "
+            f"{fit_display_width(labels_csv, 26)}  "
+            f"\033[2m{format_updated_at(updated_at)}\033[0m"
+        )
+        print("\t".join([display, number, title, labels_csv]))
+    elif mode == "pr":
+        number, title, branch_name, author, updated_at = (row + [""] * 5)[:5]
+        display = (
+            f"#{number:<6} "
+            f"{fit_display_width(title, 60)}  "
+            f"{fit_display_width(branch_name, 20)}  "
+            f"{fit_display_width(author, 16)}  "
+            f"\033[2m{format_updated_at(updated_at)}\033[0m"
+        )
+        print("\t".join([display, number, title, branch_name, author]))
+    else:
+        raise SystemExit(f"unsupported mode: {mode}")
+' "$mode"
 }
 
 prompt_branch_name() {
@@ -240,36 +203,20 @@ prompt_branch_name() {
   printf '%s\n' "$branch_name"
 }
 
-record_delim=$'\037'
-
 select_issue() {
-  local number title labels_csv updated_at display issue_rows
-
-  issue_rows="$(
-    gh issue list --state open --assignee @me --limit 200 \
-      --json number,title,labels,updatedAt \
-      --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")'
-  )"
-
-  while IFS="$record_delim" read -r number title labels_csv updated_at; do
-    display="$(build_issue_display "$number" "$title" "$labels_csv" "$updated_at")"
-    printf '%s\t%s\t%s\t%s\n' "$display" "$number" "$title" "$labels_csv"
-  done <<<"$issue_rows" | fzf --ansi --delimiter=$'\t' --with-nth=1
+  gh issue list --state open --assignee @me --limit 200 \
+    --json number,title,labels,updatedAt \
+    --jq '.[] | [(.number | tostring), .title, ((.labels | map(.name)) | join(",")), .updatedAt] | join("\u001f")' \
+    | format_selection_rows issue \
+    | fzf --ansi --delimiter=$'\t' --with-nth=1
 }
 
 select_pr() {
-  local pr_number title branch_name author updated_at display pr_rows
-
-  pr_rows="$(
-    gh pr list --state open --limit 200 \
-      --json number,title,headRefName,author,updatedAt \
-      --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")'
-  )"
-
-  while IFS="$record_delim" read -r pr_number title branch_name author updated_at; do
-    display="$(build_pr_display "$pr_number" "$title" "$branch_name" "$author" "$updated_at")"
-    printf '%s\t%s\t%s\t%s\t%s\n' "$display" "$pr_number" "$title" "$branch_name" "$author"
-  done <<<"$pr_rows" | fzf --ansi --delimiter=$'\t' --with-nth=1
+  gh pr list --state open --limit 200 \
+    --json number,title,headRefName,author,updatedAt \
+    --jq '.[] | [(.number | tostring), .title, .headRefName, .author.login, .updatedAt] | join("\u001f")' \
+    | format_selection_rows pr \
+    | fzf --ansi --delimiter=$'\t' --with-nth=1
 }
 
 create_issue_worktree() {
