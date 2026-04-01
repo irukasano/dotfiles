@@ -116,7 +116,7 @@ ag:
 .PHONY: dotfiles-repo
 dotfiles-repo:
 	lesskey ~/dotfiles/.lesskey
-	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore ~/dotfiles/.tmux.conf | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
+	ls -1 ~/dotfiles/.gitconfig ~/dotfiles/.grcat.mysql ~/dotfiles/.lessfilter ~/dotfiles/.agignore | xargs -I@ sh -c 'ln -sf @ ~/`basename @`'
 	cp -p ~/dotfiles/.my.cnf ~/
 
 #---------------------------------------------------------------------------------#
@@ -372,4 +372,3 @@ yazi-plugins: yazi
 	ya pkg add yazi-rs/plugins:full-border
 	ya pkg add yazi-rs/plugins:chmod
 	ya pkg add dedukun/bookmarks
-
