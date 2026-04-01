@@ -111,10 +111,11 @@ format = '[[( $all_status$ahead_behind )](fg:color_fg0 bg:color_red)]($style)'
 ahead = '󰁝${count}'
 diverged = '󰹺󰁝${ahead_count}󰁅${behind_count}'
 behind = '󰁅${count}'
-untracked = ''
+#untracked = ''
+untracked = '?'
 stashed = '󱗜'
-modified = '󱈸'
-staged = '󱇬${count}'
+modified = '!'
+staged = '+${count}'
 
 [git_state]
 style = "bg:color_red"
