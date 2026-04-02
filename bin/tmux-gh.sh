@@ -120,6 +120,13 @@ open_dir_in_tmux() {
   fi
 }
 
+format_pr_tab_name() {
+  local pr_number="$1"
+  local branch_name="$2"
+
+  printf '%s[PR#%s]\n' "$branch_name" "$pr_number"
+}
+
 resolve_worktree_dir() {
   local id="$1"
   local dir
@@ -675,18 +682,20 @@ create_issue_worktree() {
 create_pr_worktree() {
   local pr_number="$1"
   local branch_name="$2"
-  local dir existing branch path
+  local dir existing branch path tab_name
+
+  tab_name="$(format_pr_tab_name "$pr_number" "$branch_name")"
 
   if existing="$(find_worktree_by_branch "$branch_name")"; then
     branch="$(awk -F'\t' '{print $1}' <<<"$existing")"
     path="$(awk -F'\t' '{print $2}' <<<"$existing")"
-    open_dir_in_tmux "$path" "$branch"
+    open_dir_in_tmux "$path" "$tab_name"
     return 0
   fi
 
   git gtr new "$branch_name"
   dir="$(resolve_worktree_dir "$branch_name")"
-  open_dir_in_tmux "$dir" "$branch_name"
+  open_dir_in_tmux "$dir" "$tab_name"
 }
 
 handle_issue() {
