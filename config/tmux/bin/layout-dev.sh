@@ -19,6 +19,7 @@ require_cmd() {
 main() {
   local target_pane="$1"
   local dir="$2"
+  local codex_pane_script
 
   if [[ $# -ne 2 ]]; then
     usage
@@ -27,9 +28,10 @@ main() {
 
   require_cmd tmux
   require_cmd codex
+  codex_pane_script="$HOME/dotfiles/config/tmux/bin/codex-pane.sh"
 
   tmux respawn-pane -k -t "$target_pane" -c "$dir" >/dev/null
-  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" 'exec codex' >/dev/null
+  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" >/dev/null
   tmux select-pane -t "$target_pane"
 }
 
