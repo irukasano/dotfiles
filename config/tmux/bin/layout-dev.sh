@@ -26,10 +26,9 @@ main() {
   fi
 
   require_cmd tmux
-  require_cmd fish
   require_cmd codex
 
-  tmux respawn-pane -k -t "$target_pane" -c "$dir" 'exec fish' >/dev/null
+  tmux respawn-pane -k -t "$target_pane" -c "$dir" >/dev/null
   tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" 'exec codex' >/dev/null
   tmux select-pane -t "$target_pane"
 }
