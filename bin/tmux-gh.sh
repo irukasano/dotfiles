@@ -620,7 +620,7 @@ select_issue() {
       --with-nth=1 \
       --preview "$preview_cmd" \
       --preview-window 'right,60%,border-left,wrap' \
-      --header='ctrl-r: refresh issues (TTL 300s)' \
+      --header=$'ctrl-r: refresh issues (TTL 300s)\nassignee @me の ISSUE のみ表示しています' \
       --bind "ctrl-r:execute-silent($clear_preview_cmd)+reload($reload_cmd)+clear-query"
 }
 
