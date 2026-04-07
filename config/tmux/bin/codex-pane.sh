@@ -51,18 +51,22 @@ exec_shell() {
 }
 
 main() {
-  local shell_path exit_code
+  local shell_path exit_code codex_launcher
 
   if [[ $# -ne 0 ]]; then
     usage >&2
     exit 1
   fi
 
-  require_cmd codex
+  codex_launcher="$HOME/dotfiles/bin/codex-with-gh"
+  if [[ ! -x "$codex_launcher" ]]; then
+    echo "Error: '$codex_launcher' is required." >&2
+    exit 1
+  fi
   shell_path="$(detect_shell)"
 
   set +e
-  codex
+  "$codex_launcher"
   exit_code=$?
   set -e
 
