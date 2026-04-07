@@ -15,15 +15,21 @@ help: ## タスク一覧を表示
 all: base codex-all zellij yazi ## 全インストール(base+codex+zellij+yazi)
 
 .PHONY: base
-base: init osc52 tools-all fish-all nvim-all ## 共通インストール(osc52+tools+fish+nvim)
+base: init osc52 tools-all fish-all gnupg-link nvim-all ## 共通インストール(osc52+tools+fish+gnupg+nvim)
 
 
 .PHONY: init
 init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar sysstat kitty-terminfo
-	sudo $(YUM) install -y gnupg pinentry-tty
+	sudo $(YUM) install -y gnupg pinentry pinentry-tty
 	sudo $(YUM) install --setopt=install_weak_deps=False pass
+
+.PHONY: gnupg-link
+gnupg-link:
+	@mkdir -p "$$HOME/.gnupg"
+	@chmod 700 "$$HOME/.gnupg"
+	ln -snf "$$HOME/dotfiles/config/gnupg/gpg-agent.conf" "$$HOME/.gnupg/gpg-agent.conf"
 
 #---------------------------------------------------------------------------------#
 # scripting runtimes
@@ -211,6 +217,8 @@ codex: nodejs
 	nvm use --lts >/dev/null; \
 	cd "$$HOME"; \
 	npm install -g @openai/codex; \
+	mkdir -p "$$HOME/bin"; \
+	ln -sf "$$HOME/dotfiles/bin/codex-with-gh" "$$HOME/bin/codex-with-gh"; \
 	mkdir -p "$$HOME/.codex"; \
 	sh -c '\
 	CONFIG_FILE="$$HOME/.codex/config.toml"; \
