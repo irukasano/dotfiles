@@ -183,7 +183,7 @@ normalize_slug() {
     | sed -E 's/[[:space:]]+/-/g; s/[^a-z0-9_-]+/-/g; s/-+/-/g; s/^-+//; s/-+$//')"
 
   if [[ -z "$slug" ]]; then
-    slug="misc"
+    slug="no-label"
   fi
 
   printf '%s\n' "$slug"
