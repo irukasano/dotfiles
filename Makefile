@@ -135,6 +135,12 @@ gh:
 	ln -sf $(PWD)/bin/gh $(HOME)/bin/gh
 	ln -sf $(PWD)/bin/rg-gh-pr.sh $(HOME)/bin/rg-gh-pr.sh
 	ln -sf $(PWD)/bin/gh-pr-create.sh $(HOME)/bin/gh-pr-create.sh
+	@git config --file "$$HOME/.gitconfig.local" --unset-all credential.https://github.com.helper >/dev/null 2>&1 || true
+	@git config --file "$$HOME/.gitconfig.local" --add credential.https://github.com.helper ""
+	@git config --file "$$HOME/.gitconfig.local" --add credential.https://github.com.helper "!$$HOME/bin/gh auth git-credential"
+	@git config --file "$$HOME/.gitconfig.local" --unset-all credential.https://gist.github.com.helper >/dev/null 2>&1 || true
+	@git config --file "$$HOME/.gitconfig.local" --add credential.https://gist.github.com.helper ""
+	@git config --file "$$HOME/.gitconfig.local" --add credential.https://gist.github.com.helper "!$$HOME/bin/gh auth git-credential"
 
 #---------------------------------------------------------------------------------#
 # fzf
