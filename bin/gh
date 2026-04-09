@@ -1,6 +1,66 @@
 #!/bin/sh
 set -eu
 
+token_name='github/cli-token'
+
+set_gpg_tty() {
+    if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
+        current_tty=$(tty 2>/dev/null || true)
+        if [ -n "${current_tty:-}" ] && [ "$current_tty" != "not a tty" ]; then
+            export GPG_TTY="$current_tty"
+        fi
+    fi
+}
+
+ensure_pass() {
+    if ! command -v pass >/dev/null 2>&1; then
+        echo "gh: pass コマンドが必要です。インストールしてください" >&2
+        exit 127
+    fi
+}
+
+update_token() {
+    ensure_pass
+    set_gpg_tty
+
+    if [ "${1:-}" = "--help" ]; then
+        cat >&2 <<'EOF'
+usage:
+  gh auth update-token
+  gh auth update-token --with-token
+
+examples:
+  gh auth update-token
+  printf '%s\n' "$GITHUB_TOKEN" | gh auth update-token --with-token
+EOF
+        return 0
+    fi
+
+    if [ "${1:-}" = "--with-token" ]; then
+        token=$(head -n 1)
+        if [ -z "${token:-}" ]; then
+            echo "gh: 標準入力からトークンを取得できませんでした" >&2
+            return 1
+        fi
+        printf '%s\n' "$token" | pass insert -m -f "$token_name" >/dev/null
+    else
+        if [ ! -t 0 ] || [ ! -t 2 ]; then
+            echo "gh: 対話端末がないため更新できません。'gh auth update-token --with-token' を使ってください" >&2
+            return 1
+        fi
+        pass insert -f "$token_name"
+    fi
+
+    echo "gh: $token_name を更新しました" >&2
+    return 0
+}
+
+if [ "${1:-}" = "auth" ] && [ "${2:-}" = "update-token" ]; then
+    shift 2
+    update_token "$@"
+    exit $?
+fi
+
 if [ "${1:-}" = "--ensure-auth" ]; then
     ensure_auth_only=1
     shift
@@ -15,31 +75,17 @@ if [ -n "${GH_TOKEN:-}" ]; then
     exec /usr/bin/gh "$@"
 fi
 
-if ! command -v pass >/dev/null 2>&1; then
-    echo "gh: pass コマンドが必要です。インストールしてください" >&2
-    exit 127
-fi
-
-token_name='github/cli-token'
-
-if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
-    current_tty=$(tty 2>/dev/null || true)
-    if [ -n "${current_tty:-}" ] && [ "$current_tty" != "not a tty" ]; then
-        export GPG_TTY="$current_tty"
-    fi
-fi
+ensure_pass
+set_gpg_tty
 
 if ! pass show "$token_name" >/dev/null 2>&1; then
     if [ ! -t 0 ] || [ ! -t 2 ]; then
-        echo "gh: $token_name を非対話では復元できません。先に 'gh --ensure-auth' を実行してください" >&2
+        echo "gh: $token_name を非対話では復元できません。先に 'gh --ensure-auth' または 'gh auth update-token' を実行してください" >&2
         exit 1
     fi
 
-    echo "gh: $token_name が未設定です。これから pass insert します" >&2
-    pass insert "$token_name" || {
-        echo "gh: トークン登録に失敗しました" >&2
-        exit 1
-    }
+    echo "gh: $token_name が未設定です。これから登録します" >&2
+    update_token
 fi
 
 token="$(pass show "$token_name" | head -n 1)"

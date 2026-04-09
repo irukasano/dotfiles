@@ -2,6 +2,10 @@
 
 ## Plan
 
+- [x] `bin/gh` のトークン保存フローを確認し、`pass` を直接叩かずに更新できる導線を決める
+- [x] `bin/gh` にトークン更新サブコマンドを追加し、対話・非対話の両方で更新できるようにする
+- [x] 構文確認とヘルプ出力の確認で、既存の `gh` ラッパー挙動を壊していないことを検証する
+
 - [x] `gh` セットアップの責務を整理し、`.gitconfig` ではなく `~/.gitconfig.local` に credential helper を入れる方針を反映する
 - [x] `Makefile` の `gh` タスクへ GitHub / gist 用 credential helper 設定を追加する
 - [x] 変更差分と `make -n gh` の出力を確認し、`.gitconfig` を触らないことを検証する
@@ -19,6 +23,8 @@
 - [x] 変更差分とシェル構文を確認して、既存の終了後復帰挙動を壊していないことを検証する
 
 ## Review
+
+- [x] 原因と修正内容、検証結果を今回の `bin/gh` 更新について追記する
 
 - [x] `bin/tmux-gh.sh` の issue 一覧が空になる再現条件を確認する
 - [x] 取得失敗時に空キャッシュを残さないようにキャッシュ更新処理を修正する
@@ -46,3 +52,7 @@
 - 背景: `gh auth setup-git` ではなく repo 管理の wrapper `~/bin/gh` を Git credential helper に使いたいため、helper 設定は `~/.gitconfig` ではなく `~/.gitconfig.local` に寄せる方針とした
 - 修正内容: `Makefile` の `gh` タスクで `~/bin/gh` の symlink 作成後に、GitHub / gist 用 credential helper を `~/.gitconfig.local` へ冪等に設定するようにした
 - 検証: `make -n gh` で `git config --file "$HOME/.gitconfig.local"` のみが実行対象であることを確認し、`git diff -- Makefile ai/tasks/todo.md` で変更範囲を確認した
+- 背景: `github/cli-token` を更新する専用導線がなく、`pass insert` の生コマンドを毎回思い出す必要があった
+- 修正内容: `bin/gh` に `gh auth update-token` と `gh auth update-token --with-token` を追加し、対話更新と stdin 経由更新の両方を wrapper 経由で実行できるようにした
+- 修正内容: `bin/gh` の未登録時メッセージを新導線に寄せ、対話時はそのまま更新フローへ遷移するようにした
+- 検証: `bash -n bin/gh` と `bin/gh auth update-token --help` が成功し、新サブコマンドの導線が有効であることを確認した
