@@ -2,6 +2,10 @@
 
 ## Plan
 
+- [x] `set-clipboard off` 後の OSC52 ヤンク経路を確認し、原因を特定する
+- [x] tmux copy-mode の `osc52.sh` 呼び出しを端末へ届く形に修正する
+- [x] 構文確認と出力確認で、OSC52 シーケンスが生成されることを検証する
+
 - [x] `bin/gh` のトークン保存フローを確認し、`pass` を直接叩かずに更新できる導線を決める
 - [x] `bin/gh` にトークン更新サブコマンドを追加し、対話・非対話の両方で更新できるようにする
 - [x] 構文確認とヘルプ出力の確認で、既存の `gh` ラッパー挙動を壊していないことを検証する
@@ -23,6 +27,11 @@
 - [x] 変更差分とシェル構文を確認して、既存の終了後復帰挙動を壊していないことを検証する
 
 ## Review
+
+- 原因: `copy-pipe-and-cancel '/usr/local/bin/osc52.sh'` は選択内容を `osc52.sh` の stdin に渡すが、スクリプトの stdout に出した OSC52 シーケンスは tmux クライアント端末へ届かないため、クリップボード更新まで到達していなかった
+- 修正内容: copy-mode の `y` と `Enter` で `TERM=tmux-256color TMUX=1 /usr/local/bin/osc52.sh > "#{pane_tty}"` を実行し、tmux passthrough 形式の OSC52 シーケンスを対象ペインの tty へ明示的に流すようにした
+- 検証: `bash -n bin/osc52.sh` が成功し、`TERM=tmux-256color` + `TMUX` 環境で DCS ラップ済み OSC52 が生成されることを `od` で確認した
+- 検証: tmux 3.2a で `config/tmux/tmux.conf` を読み込み、`set-clipboard off` のまま `copy-mode-vi` の `y` / `Enter` が tty リダイレクト付きで登録されることを確認した
 
 - [x] 原因と修正内容、検証結果を今回の `bin/gh` 更新について追記する
 
