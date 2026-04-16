@@ -289,9 +289,9 @@ tmux: fish-all codex osc52 gh git-gtr
 .PHONY: osc52
 osc52:
 	sudo mkdir -p /usr/local/src
-	sudo curl -L https://raw.githubusercontent.com/libapps/libapps-mirror/main/hterm/etc/osc52.sh -o /usr/local/src/osc52.sh
-	sudo chmod +x /usr/local/src/osc52.sh
-	sudo ln -sf /usr/local/src/osc52.sh /usr/local/bin/osc52.sh
+	#sudo curl -L https://raw.githubusercontent.com/libapps/libapps-mirror/main/hterm/etc/osc52.sh -o /usr/local/src/osc52.sh
+	#sudo chmod +x /usr/local/src/osc52.sh
+	sudo ln -sf "$$HOME/dotfiles/bin/osc52.sh /usr/local/bin/osc52.sh
 
 #---------------------------------------------------------------------------------#
 # zellij
