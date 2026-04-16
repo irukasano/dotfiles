@@ -16,6 +16,24 @@ if git diff --cached --quiet; then
   exit 0
 fi
 
+append_staged_diff_comment() {
+  git diff --cached --no-color | python3 -c '
+import sys
+
+for line in sys.stdin.buffer:
+    for encoding in ("utf-8", "cp932"):
+        try:
+            text = line.decode(encoding)
+            break
+        except UnicodeDecodeError:
+            pass
+    else:
+        text = line.decode("utf-8", "backslashreplace")
+
+    sys.stdout.buffer.write(("# " + text).encode("utf-8", "replace"))
+'
+}
+
 TEMPLATE=$(mktemp).base
 COMMIT_MSG=$(mktemp).commit
 
@@ -41,7 +59,7 @@ EOF
 {
   echo ""
   echo "# --- git diff (staged) ---"
-  git diff --cached --no-color | sed 's/^/# /'
+  append_staged_diff_comment
 } >> "$TEMPLATE"
 
 # 3. まず GIT_EDITOR が "code" を含む場合を最初に処理
@@ -58,6 +76,7 @@ else
   if command -v codex >/dev/null 2>&1; then
     PROMPT=$(mktemp).prompt
     OUTPUT_LAST=$(mktemp).codex
+    CODEX_ERR=$(mktemp).codex.err
     cat <<'EOF' > "$PROMPT"
 以下の内容をもとに日本語でコミットメッセージを作成してください
 作成内容をそのままコミットメッセージにできるようバックスラッシュ等でくくらず出力してください
@@ -66,22 +85,31 @@ EOF
     cat "$TEMPLATE" >> "$PROMPT"
 
     # codex でコミットメッセージを生成（標準出力は捨て、最終メッセージのみファイルに保存）
-    codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --skip-git-repo-check --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2>&1 || echo ""
+    if codex exec ${CODEX_MODEL:+-m "$CODEX_MODEL"} --skip-git-repo-check --output-last-message "$OUTPUT_LAST" - < "$PROMPT" >/dev/null 2> "$CODEX_ERR" && [[ -s "$OUTPUT_LAST" ]]; then
+      CODEX_MSG=$(cat "$OUTPUT_LAST")
 
-    CODEX_MSG=$(cat "$OUTPUT_LAST")
+      # COMMIT_MSG ファイルを作成
+      {
+        echo "$CODEX_MSG"
+        echo ""
+        echo "by codex : $(date +%s)"
+        echo ""
+        cat "$TEMPLATE"
+      } > "$COMMIT_MSG"
+    else
+      echo "⚠️ codex によるコミットメッセージ生成に失敗したため、テンプレートを開きます" >&2
+      sed 's/^/# codex: /' "$CODEX_ERR" >&2
 
-    # COMMIT_MSG ファイルを作成
-    {
-      echo "$CODEX_MSG"
-      echo ""
-      echo "by codex : $(date +%s)"
-      echo ""
-      cat "$TEMPLATE"
-    } > "$COMMIT_MSG"
+      {
+        echo "refs"
+        echo ""
+        cat "$TEMPLATE"
+      } > "$COMMIT_MSG"
+    fi
 
     git commit -t "$COMMIT_MSG"
 
-    rm -f "$PROMPT" "$OUTPUT_LAST"
+    rm -f "$PROMPT" "$OUTPUT_LAST" "$CODEX_ERR"
   else
     # codex がなければ osc52 -> cat の順
     {

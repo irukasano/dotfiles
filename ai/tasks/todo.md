@@ -2,6 +2,12 @@
 
 ## Plan
 
+- [x] `git commit-diff` の `codex exec --output-last-message` 失敗時の挙動を確認する
+- [x] `bin/git-commit-template.sh` で Codex 出力ファイル未生成を安全に扱う
+- [x] 構文確認と失敗経路の簡易実行で、`cat: /tmp/...codex` が出ないことを検証する
+- [x] CP932 の staged diff が混ざっても Codex prompt が UTF-8 として読めるようにする
+- [x] CP932 差分を含む一時 Git repo で `git commit-diff` の差分テンプレート生成を検証する
+
 - [x] `set-clipboard off` 後の OSC52 ヤンク経路を確認し、原因を特定する
 - [x] tmux copy-mode の `osc52.sh` 呼び出しを端末へ届く形に修正する
 - [x] 構文確認と出力確認で、OSC52 シーケンスが生成されることを検証する
@@ -27,6 +33,13 @@
 - [x] 変更差分とシェル構文を確認して、既存の終了後復帰挙動を壊していないことを検証する
 
 ## Review
+
+- 原因: `codex exec --output-last-message "$OUTPUT_LAST"` が失敗して出力ファイルを作らない場合でも、直後に `cat "$OUTPUT_LAST"` を実行していたため `cat: /tmp/...codex: そのようなファイルやディレクトリはありません` で落ちていた
+- 修正内容: `codex exec` の stderr を一時ファイルへ保存し、終了コードと `OUTPUT_LAST` の非空確認が成功した場合だけ生成結果を読むようにした。失敗時はエラー内容を表示し、手動編集用テンプレートにフォールバックする
+- 検証: `bash -n bin/git-commit-template.sh` が成功し、fake `codex` が失敗する一時 Git repo で `cat: /tmp/...codex` を出さずに editor 経由の commit まで通ることを確認した
+- 追加原因: CP932 ファイルの差分が prompt に混ざると、Codex が UTF-8 として読めず `--output-last-message` の出力ファイル未生成につながる可能性があった
+- 修正内容: staged diff をテンプレートへ入れる直前に、行単位で UTF-8、CP932 の順に decode し、どちらでも読めない bytes は escape するようにした
+- 検証: CP932 で `こんにちはCP932` を書いた一時 Git repo の staged diff を使い、Codex に渡る prompt が UTF-8 として読め、CP932 本文も復元されることを確認した
 
 - 原因: `copy-pipe-and-cancel '/usr/local/bin/osc52.sh'` は選択内容を `osc52.sh` の stdin に渡すが、スクリプトの stdout に出した OSC52 シーケンスは tmux クライアント端末へ届かないため、クリップボード更新まで到達していなかった
 - 修正内容: copy-mode の `y` と `Enter` で `TERM=tmux-256color TMUX=1 /usr/local/bin/osc52.sh > "#{pane_tty}"` を実行し、tmux passthrough 形式の OSC52 シーケンスを対象ペインの tty へ明示的に流すようにした
