@@ -51,6 +51,14 @@
 - [x] `ai/tasks/lessons.md` に今回の指摘パターンを記録する
 - [x] conflict 解消状態と差分を検証する
 
+### 2026-04-17: tmux 3.5a OSC52 clipboard
+
+- [x] 既存の tmux copy-mode と `osc52.sh` の経路を確認する
+- [x] tmux 3.5a の `allow-passthrough` 既定値を確認する
+- [x] tmux 3.3+ だけ DCS passthrough を許可する設定を追加する
+- [x] tmux 設定構文と option 反映を検証する
+- [x] 原因、修正内容、検証結果を Review に記録する
+
 ## Review
 
 ### 2026-04-16: tmux pane send-to-next-tab
@@ -118,3 +126,12 @@
 - 修正内容: `config/codex/AGENTS.md` に `ai/tasks/todo.md` の依頼単位追記、既存履歴非並べ替え、conflict 時は双方を残す方針を追記した
 - 修正内容: `ai/tasks/lessons.md` に今回の再発防止ルールを記録した
 - 検証: conflict marker が残っていないこと、`git diff --check` が成功すること、`ai/tasks/todo.md` の未解決状態を解消できることを確認した
+
+### 2026-04-17: tmux 3.5a OSC52 clipboard
+
+- 原因: tmux 3.5a では `allow-passthrough` の既定値が `off` で、`osc52.sh` が出す `\033Ptmux;...\033\\` の DCS passthrough が tmux で止まり、外側端末の OSC52 クリップボード更新まで届いていなかった
+- 修正内容: `config/tmux/tmux.conf` に tmux 3.3+ の場合だけ `set -g allow-passthrough on` を追加し、既存の `set-clipboard off` と明示的な `osc52.sh > "#{pane_tty}"` 経路は維持した
+- 互換性: tmux 3.2a では version guard が false になるため、未対応 option を設定せず既存挙動を維持する
+- 検証: tmux 3.5a の一時サーバーで `source-file config/tmux/tmux.conf` が成功し、`show-options -g allow-passthrough` が `on` になることを確認した
+- 検証: `copy-mode-vi` の `y` / `Enter` が `TERM=tmux-256color TMUX=1 /usr/local/bin/osc52.sh > "#{pane_tty}"` のまま登録されることを確認した
+- 検証: `printf test | TERM=tmux-256color TMUX=1 bin/osc52.sh` が DCS ラップ済み OSC52 を生成すること、`git diff --check -- config/tmux/tmux.conf ai/tasks/todo.md` が成功することを確認した
