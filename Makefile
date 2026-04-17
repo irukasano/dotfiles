@@ -214,7 +214,7 @@ nvim-settings-repo:
 # codex-all
 #---------------------------------------------------------------------------------#
 .PHONY: codex-all
-codex-all: codex codex-gh-mcp codex-settings ## codex-cli
+codex-all: codex codex-config codex-gh-mcp codex-settings ## codex-cli
 
 .PHONY: codex
 codex: nodejs
@@ -224,22 +224,31 @@ codex: nodejs
 	cd "$$HOME"; \
 	npm install -g @openai/codex; \
 	mkdir -p "$$HOME/bin"; \
-	ln -sf "$$HOME/dotfiles/bin/codex-with-gh" "$$HOME/bin/codex-with-gh"; \
-	mkdir -p "$$HOME/.codex"; \
-	sh -c '\
-	CONFIG_FILE="$$HOME/.codex/config.toml"; \
-	NOTIFY_LINE="notify = [\"$$HOME/dotfiles/bin/notify-backhaul.sh\"]"; \
-	touch "$$CONFIG_FILE"; \
-	if ! grep -qxF "$$NOTIFY_LINE" "$$CONFIG_FILE"; then \
-		TMP_FILE=$$(mktemp); \
-		echo "$$NOTIFY_LINE" > "$$TMP_FILE"; \
-		cat "$$CONFIG_FILE" >> "$$TMP_FILE"; \
-		mv "$$TMP_FILE" "$$CONFIG_FILE"; \
-	fi'
+	ln -sf "$$HOME/dotfiles/bin/codex-with-gh" "$$HOME/bin/codex-with-gh"
 
+.PHONY: codex-config
+codex-config:
+	@mkdir -p "$$HOME/.codex"
+	@CONFIG_FILE="$$HOME/.codex/config.toml"; \
+	MARKER="# auto config by irukasano/dotfiles"; \
+	if [ -f "$$CONFIG_FILE" ] && grep -qxF "$$MARKER" "$$CONFIG_FILE"; then \
+		echo "$$CONFIG_FILE already managed by irukasano/dotfiles; skipping."; \
+	else \
+		printf '%s\n' \
+			"$$MARKER" \
+			'notify = ["'"$$HOME"'/dotfiles/bin/notify-backhaul.sh"]' \
+			'personality = "pragmatic"' \
+			'sandbox_mode = "workspace-write"' \
+			'approval_policy = "never"' \
+			'' \
+			'[tui]' \
+			'notification_method = "bel"' \
+			'notifications = ["agent-turn-complete", "approval-requested"]' \
+			> "$$CONFIG_FILE"; \
+	fi
 
 .PHONY: codex-gh-mcp
-codex-gh-mcp: python3
+codex-gh-mcp: python3 codex-config
 	mkdir -p $(HOME)/mcp
 	if [ ! -d "$(HOME)/mcp/gh-mcp" ]; then \
 		git clone https://github.com/munch-group/gh-mcp.git $(HOME)/mcp/gh-mcp; \

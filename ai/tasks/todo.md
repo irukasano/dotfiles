@@ -2,6 +2,14 @@
 
 ## Plan
 
+### 2026-04-17: codex config task
+
+- [x] 既存の `codex` / `codex-all` / `codex-gh-mcp` の config 更新順序を確認する
+- [x] `codex` から notify 追記処理を外し、`codex-config` へ base config 生成を移す
+- [x] `codex-all` に `codex-config` を追加し、MCP 追記との順序が壊れないことを確認する
+- [x] `make -n` と差分確認で生成内容と変更範囲を検証する
+- [x] marker コメントによる簡易冪等化を追加し、既存管理済み config を上書きしないことを検証する
+
 ### 2026-04-16: tmux pane send-to-next-tab
 
 - [x] `pane_mode` の既存ガイドとキーバインド配置を確認する
@@ -60,6 +68,16 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-17: codex config task
+
+- 原因: `codex` タスク内で `notify` だけを既存 config へ差し込んでおり、Codex の基本設定をまとめて再生成するタスクがなかった
+- 修正内容: `codex` から config 更新処理を外し、`codex-config` で `notify` / `personality` / `sandbox_mode` / `approval_policy` / `[tui]` 設定を `~/.codex/config.toml` へ生成するようにした
+- 修正内容: `codex-all` に `codex-config` を追加し、`codex-gh-mcp` も `codex-config` に依存させて base config 生成後に MCP 設定を追記する順序にした
+- 修正内容: `# auto config by irukasano/dotfiles` を marker として config 先頭に書き、同じ marker が既にある場合は `codex-config` が上書きしないようにした
+- 検証: 一時 HOME に対して `make HOME=<tmp> codex-config` を実行し、期待する TOML が生成されることを確認した
+- 検証: marker 付き config に `[mcp_servers.gh]` を追記した後で `make HOME=<tmp> codex-config` を再実行し、checksum が変わらず追記内容が保持されることを確認した
+- 検証: `make -n codex-config` / `make -n codex-all` / `make -n codex-gh-mcp` と `git diff --check -- Makefile ai/tasks/todo.md ai/tasks/lessons.md` が成功した
 
 ### 2026-04-16: tmux pane send-to-next-tab
 
