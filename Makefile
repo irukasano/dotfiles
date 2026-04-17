@@ -230,20 +230,28 @@ codex: nodejs
 codex-config:
 	@mkdir -p "$$HOME/.codex"
 	@CONFIG_FILE="$$HOME/.codex/config.toml"; \
-	MARKER="# auto config by irukasano/dotfiles"; \
-	if [ -f "$$CONFIG_FILE" ] && grep -qxF "$$MARKER" "$$CONFIG_FILE"; then \
+	OLD_MARKER="# auto config by irukasano/dotfiles"; \
+	BEGIN_MARKER="# BEGIN auto config by irukasano/dotfiles"; \
+	END_MARKER="# END auto config by irukasano/dotfiles"; \
+	if [ -f "$$CONFIG_FILE" ] && { grep -qxF "$$OLD_MARKER" "$$CONFIG_FILE" || grep -qxF "$$BEGIN_MARKER" "$$CONFIG_FILE"; }; then \
 		echo "$$CONFIG_FILE already managed by irukasano/dotfiles; skipping."; \
 	else \
 		printf '%s\n' \
-			"$$MARKER" \
+			"$$BEGIN_MARKER" \
+			'sandbox_mode = "workspace-write"' \
+			'approval_policy = "on-request"' \
+			'approvals_reviewer = "guardian_subagent"' \
+			'model = "gpt-5.4"' \
 			'notify = ["'"$$HOME"'/dotfiles/bin/notify-backhaul.sh"]' \
 			'personality = "pragmatic"' \
-			'sandbox_mode = "workspace-write"' \
-			'approval_policy = "never"' \
 			'' \
 			'[tui]' \
 			'notification_method = "bel"' \
 			'notifications = ["agent-turn-complete", "approval-requested"]' \
+			'' \
+			'[features]' \
+			'guardian_approval = true' \
+			"$$END_MARKER" \
 			> "$$CONFIG_FILE"; \
 	fi
 

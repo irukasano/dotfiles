@@ -2,6 +2,14 @@
 
 ## Plan
 
+### 2026-04-17: codex config requested defaults
+
+- [x] `codex-config` の既存生成内容と marker 冪等化を確認する
+- [x] 指定された Codex config 値を `Makefile` の `codex-config` へ反映する
+- [x] 一時 HOME で `make codex-config` を実行し、生成 TOML が指定値になることを確認する
+- [x] begin/end marker を追加し、既存 marker 付き config は更新せず skip することを確認する
+- [x] 差分と whitespace を検証し、Review に結果を記録する
+
 ### 2026-04-17: codex config task
 
 - [x] 既存の `codex` / `codex-all` / `codex-gh-mcp` の config 更新順序を確認する
@@ -68,6 +76,18 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-17: codex config requested defaults
+
+- 原因: `codex-config` の生成内容が以前の既定値のままで、`approval_policy = "never"` になっており、guardian approval と model 指定も含まれていなかった
+- 修正内容: `Makefile` の `codex-config` が `sandbox_mode = "workspace-write"`、`approval_policy = "on-request"`、`approvals_reviewer = "guardian_subagent"`、`model = "gpt-5.4"`、`notify`、`personality = "pragmatic"` を生成するように更新した
+- 修正内容: `[tui]` の通知設定を維持し、`[features] guardian_approval = true` を追加した
+- 修正内容: 新規生成 config に `# BEGIN auto config by irukasano/dotfiles` と `# END auto config by irukasano/dotfiles` を入れるようにした
+- 互換性: 既存の旧 marker または begin marker 付き config は管理済みと見なし、`codex-config` 再実行では更新せず skip する方針にした
+- 検証: 一時 HOME に対して `make HOME=<tmp> codex-config` を実行し、生成 TOML が指定値になることを確認した
+- 検証: begin marker 付き config と旧 marker 付き config の再実行で checksum が変わらず、既存内容を更新しないことを確認した
+- 検証: `python3` の `tomllib` で生成 TOML を parse できることを確認した
+- 検証: `make -n codex-config` / `make -n codex-all` / `make -n codex-gh-mcp` と `git diff --check -- Makefile ai/tasks/todo.md ai/tasks/lessons.md` が成功した
 
 ### 2026-04-17: codex config task
 
