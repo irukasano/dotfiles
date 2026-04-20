@@ -2,6 +2,14 @@
 
 ## Plan
 
+### 2026-04-20: gh-ec2 Parameter Store token wrapper
+
+- [x] 既存 `bin/gh` の互換対象オプションと分岐を確認する
+- [x] `bin/gh-ec2` を追加し、`GH_TOKEN` 優先と Parameter Store 取得を実装する
+- [x] `--ensure-auth` と `auth update-token` の EC2 向け挙動を実装する
+- [x] 構文確認と fake `aws` / `gh` による主要パス検証を行う
+- [x] 変更差分を確認し、Review に結果を記録する
+
 ### 2026-04-17: codex config requested defaults
 
 - [x] `codex-config` の既存生成内容と marker 冪等化を確認する
@@ -76,6 +84,19 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-20: gh-ec2 Parameter Store token wrapper
+
+- 背景: EC2 では pass/gpg の利用者や鍵管理が曖昧になるため、GitHub token を Parameter Store `/app/github/llm_github_token` から取得する `gh` 互換ラッパーが必要だった
+- 修正内容: `bin/gh-ec2` を追加し、`GH_TOKEN` が既にある場合は Parameter Store を読まずに `/usr/bin/gh` を実行するようにした
+- 修正内容: `GH_TOKEN` がない場合は `aws ssm get-parameter --with-decryption --name /app/github/llm_github_token --query Parameter.Value --output text` でトークンを取得し、`GH_TOKEN` として `/usr/bin/gh` へ渡すようにした
+- 修正内容: `--ensure-auth` は Parameter Store から取得できることだけを確認して終了し、`auth update-token` は AWS 側で更新する旨を出して非ゼロ終了するようにした
+- 検証: `bash -n bin/gh-ec2` と `sh -n bin/gh-ec2` が成功した
+- 検証: `GH_TOKEN=test-token bin/gh-ec2 --version` が `/usr/bin/gh --version` を実行できることを確認した
+- 検証: `bin/gh-ec2 auth update-token` が AWS 側更新を促すメッセージを出して終了コード 1 になることを確認した
+- 検証: `aws` 未導入時の `bin/gh-ec2 --ensure-auth` が終了コード 127 で分かるエラーを出すことを確認した
+- 検証: fake `aws` を使い、`--ensure-auth` が取得成功時に無出力で終了コード 0、空相当の値では非ゼロになることを確認した
+- 検証: `git diff --check -- ai/tasks/todo.md` と `git diff --no-index --check /dev/null bin/gh-ec2` で whitespace error がないことを確認した
 
 ### 2026-04-17: codex config requested defaults
 

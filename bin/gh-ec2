@@ -1,0 +1,76 @@
+#!/bin/sh
+set -eu
+
+parameter_name='/app/github/llm_github_token'
+gh_bin='/usr/bin/gh'
+
+ensure_aws() {
+    if ! command -v aws >/dev/null 2>&1; then
+        echo "gh-ec2: aws コマンドが必要です。インストールしてください" >&2
+        exit 127
+    fi
+}
+
+ensure_gh() {
+    if [ ! -x "$gh_bin" ]; then
+        echo "gh-ec2: $gh_bin が必要です。インストールしてください" >&2
+        exit 127
+    fi
+}
+
+get_token() {
+    ensure_aws
+
+    token="$(
+        aws ssm get-parameter \
+            --name "$parameter_name" \
+            --with-decryption \
+            --query 'Parameter.Value' \
+            --output text
+    )" || {
+        echo "gh-ec2: $parameter_name を取得できませんでした。aws configure、IAM、SSM parameter の存在を確認してください" >&2
+        return 1
+    }
+
+    if [ -z "$token" ] || [ "$token" = "None" ]; then
+        echo "gh-ec2: $parameter_name からトークンを取得できませんでした" >&2
+        return 1
+    fi
+
+    printf '%s\n' "$token"
+}
+
+update_token() {
+    echo "gh-ec2: Parameter Store の $parameter_name は AWS 側で更新してください" >&2
+    return 1
+}
+
+if [ "${1:-}" = "auth" ] && [ "${2:-}" = "update-token" ]; then
+    update_token
+    exit $?
+fi
+
+if [ "${1:-}" = "--ensure-auth" ]; then
+    ensure_auth_only=1
+    shift
+else
+    ensure_auth_only=0
+fi
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    if [ "$ensure_auth_only" -eq 1 ]; then
+        exit 0
+    fi
+    ensure_gh
+    exec "$gh_bin" "$@"
+fi
+
+token="$(get_token)"
+
+if [ "$ensure_auth_only" -eq 1 ]; then
+    exit 0
+fi
+
+ensure_gh
+export GH_TOKEN="$token"
+exec "$gh_bin" "$@"
