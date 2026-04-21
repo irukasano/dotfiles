@@ -2,6 +2,12 @@
 
 ## Plan
 
+### 2026-04-21: tig chown login user
+
+- [x] `tig` インストール導線の失敗箇所を確認し、`user` 固定値をログイン中ユーザーへ置き換える方針を決める
+- [x] `Makefile` の `tig` タスクで `sudo chown` 対象ユーザーを `SUDO_USER` 優先、未設定時は `id -un` にフォールバックする形へ修正する
+- [x] `make -n tig` とシェル展開確認で期待コマンドになることを検証し、Review に記録する
+
 ### 2026-04-21: tig config management
 
 - [x] `tig` 設定ファイルを `config/tig/config` に追加し、`D` で `git commit-diff` を呼べるようにする
@@ -113,6 +119,13 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-21: tig chown login user
+
+- 原因: `Makefile` の `tig` タスクが `sudo chown -R user tig` を実行しており、存在しない固定ユーザー名 `user` で失敗していた
+- 修正内容: `sudo chown` の対象を `"$${SUDO_USER:-$$(id -un)}"` に変更し、通常実行では現在のログインユーザー、`sudo make` 経由でも元の呼び出しユーザーを優先するようにした
+- 検証: `make -n tig` で `sudo chown -R "${SUDO_USER:-$(id -un)}" tig` が出力されることを確認した
+- 検証: `bash -lc 'printf \"%s\n\" \"${SUDO_USER:-$(id -un)}\"'` で非 sudo 実行時に現在ユーザー名へ展開されることを確認した
 
 ### 2026-04-21: tig config management
 

@@ -358,11 +358,11 @@ tig-all: tig tig-setting
 
 .PHONY: tig
 tig:
-	sudo $(YUM) -y install xmlto
+	sudo $(YUM) -y install xmlto asciidoc
 	sudo mkdir -p /usr/local/src
 	sudo rm -rf /usr/local/src/tig
 	cd /usr/local/src; sudo git clone https://github.com/jonas/tig.git
-	cd /usr/local/src; sudo chown -R user tig
+	cd /usr/local/src; sudo chown -R "$${SUDO_USER:-$$(id -un)}" tig
 	cd /usr/local/src/tig; make
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
