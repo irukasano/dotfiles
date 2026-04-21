@@ -2,6 +2,14 @@
 
 ## Plan
 
+### 2026-04-20: tmux-gh worktree source branch
+
+- [x] `bin/tmux-gh.sh` の worktree 作成箇所と `git gtr new` のオプションを確認する
+- [x] 現在ブランチが `master` / `main` / `develop` の場合だけ通常処理へ進む判定を追加する
+- [x] 新規 worktree 作成時に現在ブランチを `--from` へ渡す
+- [x] 構文確認と fake command による分岐検証を行う
+- [x] 差分を確認し、Review に結果を記録する
+
 ### 2026-04-20: gh-ec2 Parameter Store token wrapper
 
 - [x] 既存 `bin/gh` の互換対象オプションと分岐を確認する
@@ -92,6 +100,18 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-20: tmux-gh worktree source branch
+
+- 原因: `bin/tmux-gh.sh` の issue worktree 作成が常に `--from develop` 固定で、PR worktree 作成は `--from` 未指定だったため、現在の作業ブランチに応じた作成元を選べなかった
+- 修正内容: 通常モード `issue` / `pr` / `file` の開始時に現在ブランチを確認し、`master` / `main` / `develop` 以外では `gh` や `fzf` を起動せず終了するようにした
+- 修正内容: issue / PR の新規 worktree 作成時に、許可された現在ブランチを `git gtr new ... --from <branch>` へ渡すようにした
+- 互換性: fzf から呼ばれる内部の list / preview / cache clear サブコマンドには現在ブランチ判定を入れず、既存のプレビュー更新経路を維持した
+- 検証: `bash -n bin/tmux-gh.sh` が成功した
+- 検証: fake 関数で `create_issue_worktree` が `git gtr new feature/bug#123 --from main`、`create_pr_worktree` が `git gtr new feature/pr-branch --from develop` を呼ぶことを確認した
+- 検証: fake `git` で現在ブランチを `feature/foo` にした `bin/tmux-gh.sh issue` が終了コード 0 で早期終了し、`gh` / `fzf` へ進まないことを確認した
+- 検証: `resolve_worktree_source_branch` が `master` / `main` / `develop` を許可し、それ以外を拒否することを確認した
+- 検証: `git diff --check -- bin/tmux-gh.sh ai/tasks/todo.md` が成功した
 
 ### 2026-04-20: gh-ec2 Parameter Store token wrapper
 

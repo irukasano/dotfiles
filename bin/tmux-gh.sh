@@ -4,6 +4,7 @@ set -euo pipefail
 LAYOUT_SCRIPT="$HOME/dotfiles/config/tmux/bin/layout-dev.sh"
 SCRIPT_PATH="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)/$(basename -- "${BASH_SOURCE[0]}")"
 CACHE_TTL_SECONDS=300
+WORKTREE_SOURCE_BRANCH=""
 
 usage() {
   cat <<EOF
@@ -25,6 +26,47 @@ require_cmd() {
     echo "Error: '$cmd' is required." >&2
     exit 1
   fi
+}
+
+current_branch() {
+  git symbolic-ref --quiet --short HEAD 2>/dev/null || true
+}
+
+resolve_worktree_source_branch() {
+  local branch
+  branch="$(current_branch)"
+
+  case "$branch" in
+    master|main|develop)
+      printf '%s\n' "$branch"
+      ;;
+    "")
+      echo "Current HEAD is detached; skip creating a worktree." >&2
+      return 1
+      ;;
+    *)
+      echo "Current branch '$branch' is not master/main/develop; skip creating a worktree." >&2
+      return 1
+      ;;
+  esac
+}
+
+prepare_interactive_mode() {
+  require_cmd git
+
+  if ! WORKTREE_SOURCE_BRANCH="$(resolve_worktree_source_branch)"; then
+    exit 0
+  fi
+
+  require_cmd gh
+  require_cmd fzf
+  require_cmd tmux
+  ensure_gh_auth
+}
+
+prepare_gh_mode() {
+  require_cmd gh
+  ensure_gh_auth
 }
 
 ensure_gh_auth() {
@@ -661,7 +703,7 @@ select_file() {
 create_issue_worktree() {
   local issue_number="$1"
   local labels_csv="$2"
-  local first_label default_branch branch_name dir existing branch path
+  local first_label default_branch branch_name source_branch dir existing branch path
 
   if existing="$(find_worktree_by_issue_number "$issue_number")"; then
     branch="$(awk -F'\t' '{print $1}' <<<"$existing")"
@@ -673,8 +715,9 @@ create_issue_worktree() {
   first_label="${labels_csv%%,*}"
   default_branch="feature/$(normalize_slug "$first_label")#${issue_number}"
   branch_name="$(prompt_branch_name "$default_branch")"
+  source_branch="${WORKTREE_SOURCE_BRANCH:-$(resolve_worktree_source_branch)}"
 
-  git gtr new "$branch_name" --from develop
+  git gtr new "$branch_name" --from "$source_branch"
   dir="$(resolve_worktree_dir "$branch_name")"
   open_dir_in_tmux "$dir" "$branch_name"
 }
@@ -682,7 +725,7 @@ create_issue_worktree() {
 create_pr_worktree() {
   local pr_number="$1"
   local branch_name="$2"
-  local dir existing branch path tab_name
+  local source_branch dir existing branch path tab_name
 
   tab_name="$(format_pr_tab_name "$pr_number" "$branch_name")"
 
@@ -693,7 +736,8 @@ create_pr_worktree() {
     return 0
   fi
 
-  git gtr new "$branch_name"
+  source_branch="${WORKTREE_SOURCE_BRANCH:-$(resolve_worktree_source_branch)}"
+  git gtr new "$branch_name" --from "$source_branch"
   dir="$(resolve_worktree_dir "$branch_name")"
   open_dir_in_tmux "$dir" "$tab_name"
 }
@@ -738,47 +782,50 @@ handle_file() {
 }
 
 main() {
-  require_cmd gh
-  require_cmd fzf
-  require_cmd git
-  require_cmd tmux
-  ensure_gh_auth
-
   case "${1:-}" in
     issue)
       [[ $# -eq 1 ]] || { usage; exit 1; }
+      prepare_interactive_mode
       handle_issue
       ;;
     pr)
       [[ $# -eq 1 ]] || { usage; exit 1; }
+      prepare_interactive_mode
       handle_pr
       ;;
     file)
       [[ $# -eq 1 ]] || { usage; exit 1; }
+      prepare_interactive_mode
       handle_file
       ;;
     __list-issue)
       [[ $# -le 2 ]] || { usage; exit 1; }
+      prepare_gh_mode
       list_rows issue "${2:+1}"
       ;;
     __list-pr)
       [[ $# -le 2 ]] || { usage; exit 1; }
+      prepare_gh_mode
       list_rows pr "${2:+1}"
       ;;
     __list-file)
       [[ $# -le 2 ]] || { usage; exit 1; }
+      prepare_gh_mode
       list_rows file "${2:+1}"
       ;;
     __preview-issue)
       [[ $# -eq 2 ]] || exit 0
+      prepare_gh_mode
       preview_item issue "$2"
       ;;
     __preview-pr)
       [[ $# -eq 2 ]] || exit 0
+      prepare_gh_mode
       preview_item pr "$2"
       ;;
     __preview-file)
       [[ $# -eq 2 ]] || exit 0
+      prepare_gh_mode
       preview_item file "$2"
       ;;
     __clear-preview-issue)
