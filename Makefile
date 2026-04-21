@@ -12,7 +12,7 @@ help: ## タスク一覧を表示
 		awk 'BEGIN {FS = ":.*## "}; {printf "%-20s %s\n", $$1, $$2}'
 
 .PHONY: all
-all: base codex-all zellij yazi ## 全インストール(base+codex+zellij+yazi)
+all: base codex-all tmux yazi ## 全インストール(base+codex+tmux+yazi)
 
 .PHONY: base
 base: init osc52 tools-all fish-all gnupg-link nvim-all ## 共通インストール(osc52+tools+fish+gnupg+nvim)
@@ -256,7 +256,7 @@ codex-config:
 	fi
 
 .PHONY: codex-gh-mcp
-codex-gh-mcp: python3 codex-config
+codex-gh-mcp: python3 codex-config gh
 	mkdir -p $(HOME)/mcp
 	if [ ! -d "$(HOME)/mcp/gh-mcp" ]; then \
 		git clone https://github.com/munch-group/gh-mcp.git $(HOME)/mcp/gh-mcp; \
@@ -286,7 +286,7 @@ codex-settings:
 # tmux
 #---------------------------------------------------------------------------------#
 .PHONY: tmux
-tmux: fish-all codex osc52 gh git-gtr
+tmux: fish-all codex-all osc52 gh git-gtr
 	sudo $(YUM) install -y tmux
 	mkdir -p "$$HOME/.config/tmux"
 	mkdir -p "$$HOME/.tmux/plugins"
