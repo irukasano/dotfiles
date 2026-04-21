@@ -2,6 +2,18 @@
 
 ## Plan
 
+### 2026-04-21: tig config management
+
+- [x] `tig` 設定ファイルを `config/tig/config` に追加し、`D` で `git commit-diff` を呼べるようにする
+- [x] `Makefile` に `tig-setting` と `tig-all` を追加し、`~/.config/tig/config` へリンクする導線を作る
+- [x] 試験用 `ai/tasks/workspace` の `tigrc` を整理し、`make -n` と `tig --help` で設定反映導線を検証して Review に記録する
+
+### 2026-04-21: tig custom commit test bind
+
+- [x] `tig` 設定の管理場所と既存導線を確認する
+- [x] 試験用の `tigrc` を `ai/tasks/workspace` に追加して `bind status M !git commit-diff` を定義する
+- [x] `TIGRC_USER` で読み込めることを確認し、Review に結果を記録する
+
 ### 2026-04-20: tmux-gh worktree source branch
 
 - [x] `bin/tmux-gh.sh` の worktree 作成箇所と `git gtr new` のオプションを確認する
@@ -100,6 +112,24 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-21: tig config management
+
+- 背景: 試験用の `tigrc` は `ai/tasks/workspace` に置いて `M` バインドで確認していたが、本運用では dotfiles 管理下の `~/.config/tig/config` へ寄せたい
+- 修正内容: `config/tig/config` を追加し、`bind status D !git commit-diff` を定義した
+- 修正内容: `Makefile` に `tig-setting` を追加し、`~/.config/tig/config` への `ln -sf` 導線を追加した
+- 修正内容: `Makefile` に `tig-all: tig tig-setting` を追加し、インストールと設定反映をまとめて実行できるようにした
+- 修正内容: 試験用の `ai/tasks/workspace/tig-commit-diff-test.tigrc` は削除した
+- 検証: `make -n tig-setting tig-all` で `mkdir -p "$HOME/.config/tig"` と `ln -sf "$HOME/dotfiles/config/tig/config" "$HOME/.config/tig/config"` を含む期待コマンド列が出ることを確認した
+- 検証: `TIGRC_USER=/home/user/dotfiles/config/tig/config tig --help` が成功し、設定ファイル読み込みで parse error が出ないことを確認した
+- 検証: `git diff --check -- Makefile config/tig/config ai/tasks/todo.md` が成功した
+
+### 2026-04-21: tig custom commit test bind
+
+- 背景: dotfiles 管理下には `tig` 設定がなく、`Makefile` も `tig` 本体インストールだけで `~/.tigrc` への導線は持っていなかった
+- 修正内容: 試験用の `ai/tasks/workspace/tig-commit-diff-test.tigrc` を追加し、`bind status M !git commit-diff` を定義した
+- 検証: `TIGRC_USER=/home/user/dotfiles/ai/tasks/workspace/tig-commit-diff-test.tigrc tig --help` と `tig --version` が成功し、設定ファイル読み込みで parse error が出ないことを確認した
+- 制約: この実行環境では `tig` の対話起動に必要な TTY を再現できず、`M` 押下後の editor 起動成否までは自動検証していない
 
 ### 2026-04-20: tmux-gh worktree source branch
 

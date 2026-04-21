@@ -353,6 +353,9 @@ git-gtr:
 #---------------------------------------------------------------------------------#
 # tig
 #---------------------------------------------------------------------------------#
+.PHONY: tig-all
+tig-all: tig tig-setting
+
 .PHONY: tig
 tig:
 	sudo $(YUM) -y install xmlto
@@ -363,6 +366,11 @@ tig:
 	cd /usr/local/src/tig; make
 	cd /usr/local/src/tig; make install
 	cd /usr/local/src/tig; make install-doc
+
+.PHONY: tig-setting
+tig-setting:
+	@mkdir -p "$$HOME/.config/tig"
+	ln -sf "$$HOME/dotfiles/config/tig/config" "$$HOME/.config/tig/config"
 
 #---------------------------------------------------------------------------------#
 # yazi
