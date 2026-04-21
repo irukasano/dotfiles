@@ -7,6 +7,7 @@
 - [x] `tig` 設定ファイルを `config/tig/config` に追加し、`D` で `git commit-diff` を呼べるようにする
 - [x] `Makefile` に `tig-setting` と `tig-all` を追加し、`~/.config/tig/config` へリンクする導線を作る
 - [x] 試験用 `ai/tasks/workspace` の `tigrc` を整理し、`make -n` と `tig --help` で設定反映導線を検証して Review に記録する
+- [x] `starship` の `cyberpunk2077` パレットに寄せた `tig` 色設定を追加し、設定構文を確認する
 
 ### 2026-04-21: tig custom commit test bind
 
@@ -120,6 +121,7 @@
 - 修正内容: `Makefile` に `tig-setting` を追加し、`~/.config/tig/config` への `ln -sf` 導線を追加した
 - 修正内容: `Makefile` に `tig-all: tig tig-setting` を追加し、インストールと設定反映をまとめて実行できるようにした
 - 修正内容: 試験用の `ai/tasks/workspace/tig-commit-diff-test.tigrc` は削除した
+- 修正内容: `config/starship.toml` の `cyberpunk2077` パレットに合わせて、`config/tig/config` に title/status/main/diff/status-view の色設定を追加した
 - 検証: `make -n tig-setting tig-all` で `mkdir -p "$HOME/.config/tig"` と `ln -sf "$HOME/dotfiles/config/tig/config" "$HOME/.config/tig/config"` を含む期待コマンド列が出ることを確認した
 - 検証: `TIGRC_USER=/home/user/dotfiles/config/tig/config tig --help` が成功し、設定ファイル読み込みで parse error が出ないことを確認した
 - 検証: `git diff --check -- Makefile config/tig/config ai/tasks/todo.md` が成功した
