@@ -23,7 +23,7 @@ init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar sysstat kitty-terminfo
 	sudo $(YUM) install -y gnupg pinentry pinentry-tty
-	sudo $(YUM) install --setopt=install_weak_deps=False pass
+	sudo $(YUM) install -y --setopt=install_weak_deps=False pass
 
 .PHONY: gnupg-link
 gnupg-link:
@@ -200,15 +200,26 @@ fish-plugins: fish-link
 #---------------------------------------------------------------------------------#
 # nvim-all
 #---------------------------------------------------------------------------------#
+.PHONY: nvim
+nvim:
+	sudo $(YUM) install -y neovim
+
 .PHONY: nvim-all
-nvim-all: nodejs nvim-settings-repo
+nvim-all: nvim nvim-settings-repo
 
 .PHONY: nvim-settings-repo
 nvim-settings-repo:
-	mkdir -p ~/.vim
-	git clone https://github.com/irukasano/init.vim ~/.config/nvim
-	ln -s ~/.config/nvim/init.vim ~/.vimrc
-	ln -s ~/.config/nvim/coc-settings.json ~/.vim/coc-settings.json
+	@mkdir -p "$$HOME/.config" "$$HOME/.vim"
+	@if [ -d "$$HOME/.config/nvim/.git" ]; then \
+		git -C "$$HOME/.config/nvim" pull --ff-only; \
+	elif [ -e "$$HOME/.config/nvim" ]; then \
+		echo "$$HOME/.config/nvim exists but is not a git repository; refusing to modify it." >&2; \
+		exit 1; \
+	else \
+		git clone https://github.com/irukasano/init.vim "$$HOME/.config/nvim"; \
+	fi
+	ln -snf "$$HOME/.config/nvim/init.vim" "$$HOME/.vimrc"
+	ln -snf "$$HOME/.config/nvim/coc-settings.json" "$$HOME/.vim/coc-settings.json"
 
 #---------------------------------------------------------------------------------#
 # codex-all

@@ -10,6 +10,14 @@
 - [x] 構文確認と fake `aws` / `gh` による主要パス検証を行う
 - [x] 変更差分を確認し、Review に結果を記録する
 
+### 2026-04-21: nvim task install and settings update
+
+- [x] 既存 `Makefile` の `nvim-all` / `nvim-settings-repo` 導線と `~/.config/nvim` の前提を確認する
+- [x] `nvim` タスクを追加し、`nvim-all: nvim nvim-settings-repo` へ更新する
+- [x] `nvim-settings-repo` に clone / 更新の分岐を追加し、管理外ディレクトリは安全に停止する
+- [x] `make -n` と一時ディレクトリ検証で `nvim` 本体導線と設定 repo 更新分岐を確認する
+- [x] 差分と検証結果を Review に記録する
+
 ### 2026-04-17: codex config requested defaults
 
 - [x] `codex-config` の既存生成内容と marker 冪等化を確認する
@@ -97,6 +105,18 @@
 - 検証: `aws` 未導入時の `bin/gh-ec2 --ensure-auth` が終了コード 127 で分かるエラーを出すことを確認した
 - 検証: fake `aws` を使い、`--ensure-auth` が取得成功時に無出力で終了コード 0、空相当の値では非ゼロになることを確認した
 - 検証: `git diff --check -- ai/tasks/todo.md` と `git diff --no-index --check /dev/null bin/gh-ec2` で whitespace error がないことを確認した
+
+### 2026-04-21: nvim task install and settings update
+
+- 背景: `base` では既に `nvim-all` を呼んでいたが、実際には Neovim 本体を入れておらず、設定 repo も既存 clone があると `git clone` で失敗して更新できなかった
+- 修正内容: `Makefile` に `nvim` タスクを追加し、`sudo $(YUM) install -y neovim` で Neovim 本体をインストールまたは更新するようにした
+- 修正内容: `nvim-all` を `nvim nvim-settings-repo` へ変更し、Node.js 依存を外して本体導線と設定 repo 導線を分離した
+- 修正内容: `nvim-settings-repo` は `~/.config/nvim/.git` がある場合に `git -C ... pull --ff-only` で更新し、未作成なら clone、Git 管理外ディレクトリが既にある場合は安全のため非ゼロ終了するようにした
+- 修正内容: `~/.vimrc` と `~/.vim/coc-settings.json` のリンク作成は `ln -snf` に変更し、再実行でも張り直せるようにした
+- 検証: `make -n nvim nvim-all` で `nvim` が `sudo dnf install -y neovim` を実行し、`nvim-all` が `nvim-settings-repo` を呼ぶことを確認した
+- 検証: 一時 HOME と fake `git` で `make nvim-settings-repo` を 2 回実行し、初回が clone、2 回目が `pull --ff-only` になること、`~/.vimrc` と `~/.vim/coc-settings.json` が期待する symlink になることを確認した
+- 検証: Git 管理外の `~/.config/nvim` を用意した一時 HOME では `make nvim-settings-repo` がエラーメッセージ付きで停止することを確認した
+- 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-04-17: codex config requested defaults
 
