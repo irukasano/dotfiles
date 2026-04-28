@@ -2,6 +2,13 @@
 
 ## Plan
 
+### 2026-04-28: yazi csv openers
+
+- [x] `config/yazi/yazi.toml` の opener / open.rules と `Shift+Enter` の現状を確認し、CSV 専用ルール追加方針を固定する
+- [x] `text/csv` を `text/*` より前に追加し、CSV の `Shift+Enter` 候補を `$EDITOR` / `Office` / `Reveal` にする
+- [x] `Show EXIF` を `reveal` から分離して画像だけへ出すようにし、通常 Enter の既定動作を維持する
+- [x] `yazi` 設定の構文と差分を確認し、Review に結果を記録する
+
 ### 2026-04-21: tig chown login user
 
 - [x] `tig` インストール導線の失敗箇所を確認し、`user` 固定値をログイン中ユーザーへ置き換える方針を決める
@@ -119,6 +126,16 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-04-28: yazi csv openers
+
+- 原因: `text/csv` の専用ルールがなく、`text/*` の `use = [ "edit", "reveal" ]` に吸われていたため、`Shift+Enter` 候補に `Office` がなく、`reveal` に混在していた `Show EXIF` も CSV に出ていた
+- 修正内容: `config/yazi/yazi.toml` に `office` opener を追加し、Linux は `desktopeditors`、Windows は `excel.exe` を起動するようにした
+- 修正内容: `open.rules` で `text/csv` を `text/*` より前へ追加し、CSV の候補順を `$EDITOR` / `Office` / `Reveal` にした
+- 修正内容: `Show EXIF` を `reveal` から `exif` opener へ分離し、画像だけ `use = [ "open", "reveal", "exif" ]` で参照するようにした
+- 影響: CSV の通常 `Enter` は先頭候補 `edit` のままなので、既定動作は引き続き `$EDITOR` のまま
+- 検証: `python3 -c "import tomllib; tomllib.load(open('config/yazi/yazi.toml','rb')); print('TOML OK')"` で TOML 構文が通ることを確認した
+- 検証: `git diff --check -- config/yazi/yazi.toml ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-04-21: tig chown login user
 

@@ -48,11 +48,17 @@ open = [
     { run = 'start "" %s1',    desc = "Open", for = "windows", orphan = true },
     { run = "termux-open %s1", desc = "Open", for = "android" },
 ]
+office = [
+    { run = "desktopeditors %s", desc = "Office", for = "linux", orphan = true },
+    { run = 'start "" excel.exe %s1', desc = "Office", for = "windows", orphan = true },
+]
 reveal = [
     { run = "xdg-open %d1",         desc = "Reveal", for = "linux" },
     { run = "open -R %s1",          desc = "Reveal", for = "macos" },
     { run = "explorer /select,%s1", desc = "Reveal", for = "windows", orphan = true },
     { run = "termux-open %d1",      desc = "Reveal", for = "android" },
+]
+exif = [
     { run = "clear; exiftool %s1; echo 'Press enter to exit'; read _", desc = "Show EXIF", for = "unix", block = true },
 ]
 extract = [
@@ -67,10 +73,12 @@ download = [
 rules = [
     # Folder
     { url = "*/", use = [ "edit", "open", "reveal" ] },
+    # CSV
+    { mime = "text/csv", use = [ "edit", "office", "reveal" ] },
     # Text
     { mime = "text/*", use = [ "edit", "reveal" ] },
     # Image
-    { mime = "image/*", use = [ "open", "reveal" ] },
+    { mime = "image/*", use = [ "open", "reveal", "exif" ] },
     # Media
     { mime = "{audio,video}/*", use = [ "play", "reveal" ] },
     # Archive
@@ -245,4 +253,3 @@ sort_by           = "none"
 sort_sensitive = false
 sort_reverse      = false
 sort_translit  = false
-
