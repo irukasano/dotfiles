@@ -23,7 +23,7 @@ init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar sysstat kitty-terminfo
 	sudo $(YUM) install -y gnupg pinentry-curses
-	sudo $(YUM) install -y --setopt=install_weak_deps=False pass
+	sudo $(YUM) install -y pass
 
 .PHONY: gnupg-link
 gnupg-link:
