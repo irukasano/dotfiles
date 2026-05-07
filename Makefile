@@ -22,7 +22,7 @@ base: init osc52 tools-all fish-all gnupg-link nvim-all ## 共通インストー
 init:
 	sudo $(YUM) update
 	sudo $(YUM) install -y tar sysstat kitty-terminfo
-	sudo $(YUM) install -y gnupg pinentry pinentry-tty
+	sudo $(YUM) install -y gnupg pinentry-curses
 	sudo $(YUM) install -y --setopt=install_weak_deps=False pass
 
 .PHONY: gnupg-link
