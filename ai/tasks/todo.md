@@ -8,6 +8,9 @@
 - [x] `apt` では `python3 python3-pip`、それ以外では `python3.11 python3.11-pip` を入れるよう `Makefile` を修正する
 - [x] `codex-gh-mcp` が OS ごとに対応する `CODEX_GH_MCP_PYTHON3` を使って `pip` 実行と config 追記を行うよう修正する
 - [x] `make -n` と一時 HOME の検証で `apt` / 非 `apt` の両経路を確認し、Review に結果を記録する
+- [x] Ubuntu の PEP 668 失敗を確認し、`gh-mcp` 専用 venv を使う方針で修正する
+- [x] `apt` では `python3-venv` を追加し、`codex-gh-mcp` が `~/mcp/gh-mcp/.venv` を作成・利用するよう修正する
+- [x] `make -n` と一時 HOME の検証で venv 作成、venv Python での install、config 追記を確認し、Review に結果を記録する
 
 ### 2026-04-28: yazi csv openers
 
@@ -137,12 +140,14 @@
 ### 2026-05-07: codex-gh-mcp python selection
 
 - 原因: `gh-mcp` upstream の要件は `README.md` と `pyproject.toml` の両方で Python 3.10 以上だったが、`Makefile` の `codex-gh-mcp` は無条件に `python3.11` を実行しており、`apt` 系の `python3` タスクは `python3.11` も `python3-pip` も入れないため依存関係が破綻していた
-- 修正内容: `Makefile` の `apt` 分岐で `PYTHON3_PKGS := python3 python3-pip` とし、`CODEX_GH_MCP_PYTHON3 := python3` を追加した
+- 追加原因: Ubuntu では `python3 -m pip install --user mcp` が PEP 668 の externally managed environment で失敗し、システム Python への user install 前提が成り立たなかった
+- 修正内容: `Makefile` の `apt` 分岐で `PYTHON3_PKGS := python3 python3-pip python3-venv` とし、`CODEX_GH_MCP_PYTHON3 := python3` を追加した
 - 修正内容: 非 `apt` 分岐では `CODEX_GH_MCP_PYTHON3 := python3.11` を追加し、既存の `python3.11` / `python3.11-pip` 導線を維持した
-- 修正内容: `codex-gh-mcp` の `pip install` と `mcp_servers.gh.command` 追記を、固定の `python3.11` ではなく `$(CODEX_GH_MCP_PYTHON3)` を使う形へ変更した
-- 検証: `make -n python3 codex-gh-mcp YUM=apt` で `sudo apt install -y python3 python3-pip`、`python3 -m pip install --user mcp`、`command = "python3"` が出力されることを確認した
-- 検証: `make -n python3 codex-gh-mcp` で `sudo dnf install -y python3 python3.11 python3.11-pip`、`python3.11 -m pip install --user mcp`、`command = "python3.11"` が出力されることを確認した
-- 検証: 一時 HOME と fake `git` / `python3` / `python3.11` を使って `make -o python3 -o gh codex-gh-mcp YUM=apt` と `make -o python3 -o gh codex-gh-mcp` を実行し、`apt` では `python3`、非 `apt` では `python3.11` が実際に呼ばれ、`~/.codex/config.toml` に同じ command 値が追記されることを確認した
+- 修正内容: `codex-gh-mcp` は `$(CODEX_GH_MCP_PYTHON3) -m venv ~/mcp/gh-mcp/.venv` で専用 venv を作成し、その venv の Python で `mcp` を install するよう変更した
+- 修正内容: `mcp_servers.gh.command` にはシステム Python ではなく `$$HOME/mcp/gh-mcp/.venv/bin/python` を追記するよう変更した
+- 検証: `make -n python3 codex-gh-mcp YUM=apt` で `sudo apt install -y python3 python3-pip python3-venv`、`python3 -m venv "$HOME/mcp/gh-mcp/.venv"`、`"$HOME/mcp/gh-mcp/.venv/bin/python" -m pip install --upgrade mcp`、`command = "$HOME/mcp/gh-mcp/.venv/bin/python"` が出力されることを確認した
+- 検証: `make -n python3 codex-gh-mcp` で `sudo dnf install -y python3 python3.11 python3.11-pip`、`python3.11 -m venv "$HOME/mcp/gh-mcp/.venv"`、`"$HOME/mcp/gh-mcp/.venv/bin/python" -m pip install --upgrade mcp`、`command = "$HOME/mcp/gh-mcp/.venv/bin/python"` が出力されることを確認した
+- 検証: 一時 HOME と fake `git` / `python3` / `python3.11` / venv Python を使って `make -o python3 -o gh codex-gh-mcp YUM=apt` と `make -o python3 -o gh codex-gh-mcp` を実行し、`apt` では `python3 -m venv`、非 `apt` では `python3.11 -m venv` が実際に呼ばれ、その後はどちらも `.venv/bin/python -m pip install --upgrade mcp` と `~/.codex/config.toml` への同一 command 値追記が行われることを確認した
 - 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-04-28: yazi csv openers

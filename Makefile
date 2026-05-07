@@ -35,7 +35,7 @@ gnupg-link:
 # scripting runtimes
 #---------------------------------------------------------------------------------#
 ifeq ($(YUM),apt)
-PYTHON3_PKGS := python3 python3-pip
+PYTHON3_PKGS := python3 python3-pip python3-venv
 CODEX_GH_MCP_PYTHON3 := python3
 else
 PYTHON3_PKGS := python3 python3.11 python3.11-pip
@@ -276,12 +276,15 @@ codex-gh-mcp: python3 codex-config gh
 	else \
 		cd $(HOME)/mcp/gh-mcp && git pull; \
 	fi
-	$(CODEX_GH_MCP_PYTHON3) -m pip install --user mcp
+	@if [ ! -x "$(HOME)/mcp/gh-mcp/.venv/bin/python" ]; then \
+		$(CODEX_GH_MCP_PYTHON3) -m venv "$(HOME)/mcp/gh-mcp/.venv"; \
+	fi
+	"$(HOME)/mcp/gh-mcp/.venv/bin/python" -m pip install --upgrade mcp
 	@mkdir -p ~/.codex
 	@sh -c '\
 	CONFIG_FILE="$$HOME/.codex/config.toml"; \
 	GH_SECTION="[mcp_servers.gh]"; \
-	GH_COMMAND="command = \"$(CODEX_GH_MCP_PYTHON3)\""; \
+	GH_COMMAND="command = \"$$HOME/mcp/gh-mcp/.venv/bin/python\""; \
 	GH_ARGS="args = [\"$$HOME/mcp/gh-mcp/server.py\"]"; \
 	touch "$$CONFIG_FILE"; \
 	if ! grep -q "^\[mcp_servers\.gh\]" "$$CONFIG_FILE"; then \
