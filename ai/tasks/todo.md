@@ -2,6 +2,12 @@
 
 ## Plan
 
+### 2026-05-07: ag package split by package manager
+
+- [x] `Makefile` の `ag` タスクと OS 分岐の現状を確認し、`apt` と非 `apt` のパッケージ名方針を記録する
+- [x] `apt` では `silversearcher-ag`、それ以外では `ag` を使う変数を追加し、`ag` タスクがその変数を参照するよう修正する
+- [x] `make -n ag YUM=apt` と `make -n ag` で両経路を確認し、Review に結果を記録する
+
 ### 2026-05-07: codex-gh-mcp python selection
 
 - [x] `gh-mcp` upstream の Python 要件と現行 `Makefile` の不整合を確認し、変更方針を記録する
@@ -136,6 +142,15 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-05-07: ag package split by package manager
+
+- 原因: `Makefile` の `ag` タスクが `sudo $(YUM) install -y ag ...` 固定で、`apt` 系でも存在しない `ag` パッケージ名を使っていた
+- 修正内容: `apt` 分岐に `AG_PKG := silversearcher-ag`、非 `apt` 分岐に `AG_PKG := ag` を追加した
+- 修正内容: `ag` タスクは固定の `ag` 文字列ではなく `$(AG_PKG)` を使ってインストールするよう変更した
+- 検証: `make -n ag YUM=apt` で `sudo apt install -y silversearcher-ag ripgrep fd-find` が出力されることを確認した
+- 検証: `make -n ag` で `sudo dnf install -y ag ripgrep fd-find` が出力されることを確認した
+- 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-05-07: codex-gh-mcp python selection
 

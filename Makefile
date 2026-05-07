@@ -37,9 +37,11 @@ gnupg-link:
 ifeq ($(YUM),apt)
 PYTHON3_PKGS := python3 python3-pip python3-venv
 CODEX_GH_MCP_PYTHON3 := python3
+AG_PKG := silversearcher-ag
 else
 PYTHON3_PKGS := python3 python3.11 python3.11-pip
 CODEX_GH_MCP_PYTHON3 := python3.11
+AG_PKG := ag
 endif
 
 .PHONY: python3
@@ -116,7 +118,7 @@ source-highlight:
 .PHONY: ag
 ag:
 	#sudo $(YUM) install -y silversearcher-ag, ripgrep
-	sudo $(YUM) install -y ag ripgrep fd-find
+	sudo $(YUM) install -y $(AG_PKG) ripgrep fd-find
 
 #---------------------------------------------------------------------------------#
 # my dotfiles settings
