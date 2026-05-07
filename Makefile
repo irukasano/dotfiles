@@ -35,9 +35,11 @@ gnupg-link:
 # scripting runtimes
 #---------------------------------------------------------------------------------#
 ifeq ($(YUM),apt)
-PYTHON3_PKGS := python3
+PYTHON3_PKGS := python3 python3-pip
+CODEX_GH_MCP_PYTHON3 := python3
 else
 PYTHON3_PKGS := python3 python3.11 python3.11-pip
+CODEX_GH_MCP_PYTHON3 := python3.11
 endif
 
 .PHONY: python3
@@ -274,12 +276,12 @@ codex-gh-mcp: python3 codex-config gh
 	else \
 		cd $(HOME)/mcp/gh-mcp && git pull; \
 	fi
-	python3.11 -m pip install --user mcp
+	$(CODEX_GH_MCP_PYTHON3) -m pip install --user mcp
 	@mkdir -p ~/.codex
 	@sh -c '\
 	CONFIG_FILE="$$HOME/.codex/config.toml"; \
 	GH_SECTION="[mcp_servers.gh]"; \
-	GH_COMMAND="command = \"python3.11\""; \
+	GH_COMMAND="command = \"$(CODEX_GH_MCP_PYTHON3)\""; \
 	GH_ARGS="args = [\"$$HOME/mcp/gh-mcp/server.py\"]"; \
 	touch "$$CONFIG_FILE"; \
 	if ! grep -q "^\[mcp_servers\.gh\]" "$$CONFIG_FILE"; then \
