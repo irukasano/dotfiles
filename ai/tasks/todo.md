@@ -2,6 +2,42 @@
 
 ## Plan
 
+### 2026-05-11: yazi bookmark save input compatibility
+
+- [x] `bookmarks.yazi` の `save` 実装と現行 Yazi の `ya.input` API を照合し、保存されない原因を記録する
+- [x] `config/yazi/init.lua` の `bookmarks` 設定から互換性のない保存前入力経路を外し、bookmark 保存を優先して通す
+- [x] `yazi --debug` と差分整形確認を行い、Review と `ai/tasks/lessons.md` に結果を記録する
+
+### 2026-05-11: yazi bookmark current directory behavior
+
+- [x] `bookmarks.yazi` の README / 実装と現行 `init.lua` を照合し、`b a` でカレントディレクトリ保存にならない原因を記録する
+- [x] `config/yazi/init.lua` の `bookmarks` 設定を、カレントディレクトリを保存しやすい形へ最小修正する
+- [x] `yazi --debug` と差分整形確認を行い、Review に結果を記録する
+
+### 2026-05-11: yazi fetcher group compatibility
+
+- [x] `yazi --debug` の `missing field group` と `config/yazi/yazi.toml` の `[plugin].fetchers` を照合し、現行 26.5.6 仕様との差分を記録する
+- [x] `config/yazi/yazi.toml` の `fetchers` に必要な `group` を追加し、次のパースエラーまで進める
+- [x] `yazi --debug` と `git diff --check` で確認し、Review に結果を記録する
+
+### 2026-05-11: yazi schema key parse error
+
+- [x] `yazi` 起動エラーと `config/yazi/*.toml` 先頭の schema 行を照合し、原因をこのタスクに記録する
+- [x] `config/yazi/yazi.toml` `config/yazi/keymap.toml` `config/yazi/theme.toml` から `"$schema"` 行を外し、現行 `yazi` が読める形へ揃える
+- [x] `timeout` 付きの `yazi` 起動確認と `git diff --check` を実施し、Review と `ai/tasks/lessons.md` に結果を記録する
+
+### 2026-05-11: yazi plugin directory creation
+
+- [x] `YUM=apt make yazi-all` の失敗ログから `yazi-plugins` の前提ディレクトリ不足を確認し、修正方針をこのタスクに記録する
+- [x] `Makefile` の `yazi-settings` / `yazi-plugins` に必要な `mkdir -p` を追加し、初回実行でも symlink 作成が失敗しないよう修正する
+- [x] `make -n yazi-all YUM=apt` と `git diff --check` で導線と整形を確認し、Review と `ai/tasks/lessons.md` に結果を記録する
+
+### 2026-05-11: yazi all target
+
+- [x] `Makefile` の `all` / `yazi` / `yazi-settings` / `yazi-plugins` の依存関係を確認し、`yazi-all` 導入方針をこのタスクに記録する
+- [x] `Makefile` に `yazi-all: yazi yazi-settings yazi-plugins` を追加し、`all` が `yazi` の代わりに `yazi-all` を参照するよう修正する
+- [x] `make -n all` と `make -n yazi-all` で依存解決順を確認し、Review に検証結果を記録する
+
 ### 2026-05-07: ag package split by package manager
 
 - [x] `Makefile` の `ag` タスクと OS 分岐の現状を確認し、`apt` と非 `apt` のパッケージ名方針を記録する
@@ -142,6 +178,55 @@
 - [x] 原因、修正内容、検証結果を Review に記録する
 
 ## Review
+
+### 2026-05-11: yazi bookmark save input compatibility
+
+- 原因: `bookmarks.yazi` の `save` 実装は `custom_desc_input = true` のとき `ya.input { position = ... }` を呼ぶが、現行 Yazi の input API は `pos` を使うため、この互換ズレで保存前入力が成立せず bookmark が確定しなかった
+- 修正内容: `config/yazi/init.lua` の `bookmarks` 設定で `custom_desc_input = false` に変更し、保存前入力を通さず `b a` の後に保存先キーを押した時点で bookmark を保存するようにした
+- 使い方: `b a` で保存先キー一覧を出し、例えば `d` や `0` を押すと、そのキーに現在ディレクトリが即保存される。その後 `b b` で一覧表示される
+- 検証: `yazi --debug </dev/null` が成功し、設定パースや plugin 読み込みを壊していないことを確認した
+- 検証: plugin 実装の `~/.config/yazi/plugins/bookmarks.yazi/main.lua` で `ya.input { position = ... }` を確認し、現行 docs の `pos` との差分を原因として記録した
+- 検証: `git diff --check -- config/yazi/init.lua ai/tasks/todo.md ai/tasks/lessons.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-11: yazi bookmark current directory behavior
+
+- 原因: `bookmarks.yazi` は `save` 時に `file_pick_mode = "hover"` だとホバー中の項目を保存し、カレントディレクトリ自体は保存しない。さらに `show_keys = false` だと `b a` の後に必要な保存先キー入力が見えず、操作が分かりにくかった
+- 修正内容: `config/yazi/init.lua` の `bookmarks` 設定で `file_pick_mode = "parent"` に変更し、保存対象をカレントディレクトリ側へ揃えた
+- 修正内容: `show_keys = true` を追加し、`b a` の後に保存先キー一覧が表示されるようにした
+- 使い方: `b a` の後、保存したい bookmark キー 1 文字を押し、その後に表示される説明入力で Enter すると現在ディレクトリが保存される
+- 検証: `yazi --debug </dev/null` が成功し、設定パースや plugin 読み込みを壊していないことを確認した
+- 検証: `git diff --check -- config/yazi/init.lua ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-11: yazi fetcher group compatibility
+
+- 原因: `config/yazi/yazi.toml` の `[plugin].fetchers` は旧形式のままで、手元の `yazi` 26.5.6 では fetcher rule に `group` が必須になっていたため `missing field group` で起動に失敗した
+- 修正内容: 3 つの `mime` fetcher すべてに `group = "mime"` を追加し、同一 group の最初の一致だけが実行される現行仕様へ合わせた
+- 検証: `yazi --debug </dev/null` が `TOML parse error` を出さず、`Config` / `Dependencies` / `Routine` まで出力されることを確認した
+- 検証: `git diff --check -- config/yazi/yazi.toml ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-11: yazi schema key parse error
+
+- 原因: `config/yazi/yazi.toml` `config/yazi/keymap.toml` `config/yazi/theme.toml` の先頭に editor 向けの `"$schema"` 行が入っており、手元の `yazi` 26.5.6 ではこれを設定キーとして解釈して `must be a kebab-cased string` で起動に失敗した
+- 修正内容: 上記 3 ファイルから `"$schema"` 行だけを削除し、コメントは残したまま現行 `yazi` が読める TOML に揃えた
+- 検証: `timeout 2 yazi </dev/null >/tmp/yazi.stdout 2>/tmp/yazi.stderr` 実行後、stderr は `TOML parse error ... "$schema"` ではなく `Error: failed to fill whole buffer` のみとなり、設定パース失敗が解消したことを確認した
+- 検証: `git diff --check -- config/yazi/yazi.toml config/yazi/keymap.toml config/yazi/theme.toml ai/tasks/todo.md ai/tasks/lessons.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-11: yazi plugin directory creation
+
+- 原因: `Makefile` の `yazi-plugins` は `~/.config/yazi/plugins` が既に存在する前提で `ln -sf` を実行しており、初回セットアップではディレクトリがなく `No such file or directory` で失敗した
+- 修正内容: `yazi-settings` の先頭に `mkdir -p $(HOME)/.config/yazi` を追加し、設定リンク前に親ディレクトリを必ず作成するようにした
+- 修正内容: `yazi-plugins` の先頭に `mkdir -p $(HOME)/.config/yazi/plugins` を追加し、plugin symlink 作成前に配置先ディレクトリを必ず作成するようにした
+- 検証: `make -n yazi-all YUM=apt` で `mkdir -p /home/sano/.config/yazi` と `mkdir -p /home/sano/.config/yazi/plugins` が `ln -sf` より前に出力されることを確認した
+- 検証: `git diff --check -- Makefile ai/tasks/todo.md ai/tasks/lessons.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-11: yazi all target
+
+- 原因: `Makefile` の `all` は `yazi` しか参照しておらず、`bookmarks` を含む `ya pkg add ...` は `yazi-plugins` に分離されていたため、初期構築で plugin 導線が実行されなかった
+- 修正内容: `Makefile` に `yazi-all: yazi yazi-settings yazi-plugins` を追加し、`all` は `yazi` の代わりに `yazi-all` を参照するよう変更した
+- 影響: `make yazi` 単体は従来どおり本体導入のみを維持し、`make all` と `make yazi-all` では設定反映と plugin 導入まで一括で実行される
+- 検証: `make -n yazi-all` で `yazi` 本体導入、設定リンク、plugin symlink、`ya pkg add dedukun/bookmarks` まで順に含まれることを確認した
+- 検証: `make -n all` で `all` から `yazi-all` が展開され、同じく `ya pkg add dedukun/bookmarks` を含むことを確認した
+- 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-05-07: ag package split by package manager
 

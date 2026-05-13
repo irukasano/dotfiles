@@ -12,7 +12,7 @@ help: ## タスク一覧を表示
 		awk 'BEGIN {FS = ":.*## "}; {printf "%-20s %s\n", $$1, $$2}'
 
 .PHONY: all
-all: base codex-all tmux yazi ## 全インストール(base+codex+tmux+yazi)
+all: base codex-all tmux yazi-all ## 全インストール(base+codex+tmux+yazi)
 
 .PHONY: base
 base: init osc52 tools-all fish-all gnupg-link nvim-all ## 共通インストール(osc52+tools+fish+gnupg+nvim)
@@ -410,7 +410,11 @@ yazi: fzf ag ## yazi filer
 	rm -rf "$$tmpdir"; \
 	yazi --version
 
+.PHONY: yazi-all
+yazi-all: yazi yazi-settings yazi-plugins ## yazi 本体+設定+plugin
+
 yazi-settings:
+	mkdir -p $(HOME)/.config/yazi
 	rm -rf ~/.config/yazi/flavors
 	git clone https://github.com/yazi-rs/flavors.git ~/.config/yazi/flavors
 	git clone https://github.com/BennyOe/tokyo-night.yazi ~/.config/yazi/flavors/tokyo-night.yazi
@@ -422,6 +426,7 @@ yazi-settings:
 	ln -sf $(PWD)/config/yazi/init.lua $(HOME)/.config/yazi/init.lua
 
 yazi-plugins: yazi
+	mkdir -p $(HOME)/.config/yazi/plugins
 	ln -sf $(PWD)/config/yazi/plugins/smart-tab.yazi $(HOME)/.config/yazi/plugins/smart-tab.yazi
 	ln -sf $(PWD)/config/yazi/plugins/svn.yazi $(HOME)/.config/yazi/plugins/svn.yazi
 	ln -sf $(PWD)/config/yazi/plugins/dirsort.yazi $(HOME)/.config/yazi/plugins/dirsort.yazi
