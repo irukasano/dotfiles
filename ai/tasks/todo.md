@@ -44,6 +44,13 @@
 - [x] `Makefile` に `apt` 向け `tig` 依存パッケージ変数を追加し、`tig` タスクがそれを使って `libncurses-dev` を導入するよう修正する
 - [x] `make -n tig YUM=apt` と `git diff --check` で導線と整形を確認し、Review に結果を記録する
 
+### 2026-05-21 07:42 : codex todo session files
+
+- [x] `config/codex/AGENTS.md` と `ai/tasks/todo.md` の現行運用を確認し、conflict が起きやすい更新点を整理する
+- [x] `ai/tasks/todo/` への新規記録切り替え方針を HLD として合意する
+- [x] `config/codex/AGENTS.md` を `1 セッション = 1 ファイル` 運用へ更新し、`ai/tasks/todo/` を作成する
+- [x] 差分と整形を確認し、Review に検証結果を記録する
+
 ### 2026-05-07: ag package split by package manager
 
 - [x] `Makefile` の `ag` タスクと OS 分岐の現状を確認し、`apt` と非 `apt` のパッケージ名方針を記録する
@@ -232,6 +239,14 @@
 - 修正内容: `tig` タスクの install 行を `sudo $(YUM) -y install xmlto asciidoc $(TIG_BUILD_DEPS)` に変更し、`apt` 系だけ必要な開発ヘッダを追加導入できるようにした
 - 検証: `make -n tig YUM=apt` で `sudo apt -y install xmlto asciidoc libncurses-dev` が先頭に出力されることを確認した
 - 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-21 07:42 : codex todo session files
+
+- 原因: `ai/tasks/todo.md` は複数セッションが同じ `Plan` / `Review` セクション末尾を更新する単一ファイル運用で、複数担当者が同時に LLM 実行すると追記位置が集中して conflict しやすかった
+- 修正内容: `config/codex/AGENTS.md` の task 管理ルールを `ai/tasks/todo/` 配下のセッション別 md 運用へ変更し、新規記録先、ファイル名、同一セッションで同じファイルを使い続ける方針を明文化した
+- 修正内容: 新運用の配置先として `ai/tasks/todo/.gitkeep` を追加し、空ディレクトリでもリポジトリ上で保持できるようにした
+- 検証: `git diff --check -- config/codex/AGENTS.md ai/tasks/todo.md ai/tasks/todo/.gitkeep` が成功し、whitespace error がないことを確認した
+- 検証: `git diff -- config/codex/AGENTS.md ai/tasks/todo.md ai/tasks/todo/.gitkeep` で、変更が task 記録ルール更新と新ディレクトリ追加だけに収まっていることを確認した
 
 ### 2026-05-11: yazi all target
 
