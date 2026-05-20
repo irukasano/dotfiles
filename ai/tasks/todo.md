@@ -38,6 +38,12 @@
 - [x] `Makefile` に `yazi-all: yazi yazi-settings yazi-plugins` を追加し、`all` が `yazi` の代わりに `yazi-all` を参照するよう修正する
 - [x] `make -n all` と `make -n yazi-all` で依存解決順を確認し、Review に検証結果を記録する
 
+### 2026-05-14: tig apt ncurses dependency
+
+- [x] `YUM=apt make tig` の失敗ログと `Makefile` の `tig` タスクを照合し、`apt` 系で不足しているビルド依存を特定する
+- [x] `Makefile` に `apt` 向け `tig` 依存パッケージ変数を追加し、`tig` タスクがそれを使って `libncurses-dev` を導入するよう修正する
+- [x] `make -n tig YUM=apt` と `git diff --check` で導線と整形を確認し、Review に結果を記録する
+
 ### 2026-05-07: ag package split by package manager
 
 - [x] `Makefile` の `ag` タスクと OS 分岐の現状を確認し、`apt` と非 `apt` のパッケージ名方針を記録する
@@ -218,6 +224,14 @@
 - 修正内容: `yazi-plugins` の先頭に `mkdir -p $(HOME)/.config/yazi/plugins` を追加し、plugin symlink 作成前に配置先ディレクトリを必ず作成するようにした
 - 検証: `make -n yazi-all YUM=apt` で `mkdir -p /home/sano/.config/yazi` と `mkdir -p /home/sano/.config/yazi/plugins` が `ln -sf` より前に出力されることを確認した
 - 検証: `git diff --check -- Makefile ai/tasks/todo.md ai/tasks/lessons.md` が成功し、whitespace error がないことを確認した
+
+### 2026-05-14: tig apt ncurses dependency
+
+- 原因: `YUM=apt make tig` の `tig` ビルドは `include/tig/tig.h` から `ncursesw/curses.h` を要求するが、`Makefile` の `tig` タスクは `xmlto asciidoc` しか入れておらず、`apt` 系で `libncurses-dev` が不足していた
+- 修正内容: `Makefile` の OS 分岐に `TIG_BUILD_DEPS` を追加し、`apt` では `libncurses-dev`、それ以外では空文字を使うようにした
+- 修正内容: `tig` タスクの install 行を `sudo $(YUM) -y install xmlto asciidoc $(TIG_BUILD_DEPS)` に変更し、`apt` 系だけ必要な開発ヘッダを追加導入できるようにした
+- 検証: `make -n tig YUM=apt` で `sudo apt -y install xmlto asciidoc libncurses-dev` が先頭に出力されることを確認した
+- 検証: `git diff --check -- Makefile ai/tasks/todo.md` が成功し、whitespace error がないことを確認した
 
 ### 2026-05-11: yazi all target
 

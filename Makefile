@@ -38,10 +38,12 @@ ifeq ($(YUM),apt)
 PYTHON3_PKGS := python3 python3-pip python3-venv
 CODEX_GH_MCP_PYTHON3 := python3
 AG_PKG := silversearcher-ag
+TIG_BUILD_DEPS := libncurses-dev
 else
 PYTHON3_PKGS := python3 python3.11 python3.11-pip
 CODEX_GH_MCP_PYTHON3 := python3.11
 AG_PKG := ag
+TIG_BUILD_DEPS :=
 endif
 
 .PHONY: python3
@@ -365,7 +367,7 @@ tig-all: tig tig-setting
 
 .PHONY: tig
 tig:
-	sudo $(YUM) -y install xmlto asciidoc
+	sudo $(YUM) -y install xmlto asciidoc $(TIG_BUILD_DEPS)
 	sudo mkdir -p /usr/local/src
 	sudo rm -rf /usr/local/src/tig
 	cd /usr/local/src; sudo git clone https://github.com/jonas/tig.git
