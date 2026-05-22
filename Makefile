@@ -429,10 +429,12 @@ yazi-settings:
 
 yazi-plugins: yazi
 	mkdir -p $(HOME)/.config/yazi/plugins
-	ln -sf $(PWD)/config/yazi/plugins/smart-tab.yazi $(HOME)/.config/yazi/plugins/smart-tab.yazi
-	ln -sf $(PWD)/config/yazi/plugins/svn.yazi $(HOME)/.config/yazi/plugins/svn.yazi
-	ln -sf $(PWD)/config/yazi/plugins/dirsort.yazi $(HOME)/.config/yazi/plugins/dirsort.yazi
-	ya pkg add imsi32/yatline
-	ya pkg add yazi-rs/plugins:full-border
-	ya pkg add yazi-rs/plugins:chmod
-	ya pkg add dedukun/bookmarks
+	mkdir -p $(HOME)/.config/yazi/scripts
+	ln -sfn $(PWD)/config/yazi/plugins/smart-tab.yazi $(HOME)/.config/yazi/plugins/smart-tab.yazi
+	ln -sfn $(PWD)/config/yazi/plugins/svn.yazi $(HOME)/.config/yazi/plugins/svn.yazi
+	ln -sfn $(PWD)/config/yazi/plugins/dirsort.yazi $(HOME)/.config/yazi/plugins/dirsort.yazi
+	ln -sfn $(PWD)/config/yazi/scripts/zip-dir.sh $(HOME)/.config/yazi/scripts/zip-dir.sh
+	@if ! grep -Fqx 'use = "imsi32/yatline"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add imsi32/yatline; fi
+	@if ! grep -Fqx 'use = "yazi-rs/plugins:full-border"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add yazi-rs/plugins:full-border; fi
+	@if ! grep -Fqx 'use = "yazi-rs/plugins:chmod"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add yazi-rs/plugins:chmod; fi
+	@if ! grep -Fqx 'use = "dedukun/bookmarks"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add dedukun/bookmarks; fi
