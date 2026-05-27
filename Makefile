@@ -213,6 +213,26 @@ nvim:
 .PHONY: nvim-all
 nvim-all: nvim nvim-settings-repo
 
+.PHONY: nvim-alternative-setting
+nvim-alternative-setting: ## dnf 系で alternatives を使って vim を nvim に切り替え
+	@if [ "$(YUM)" = "apt" ]; then \
+		echo "Skipping nvim alternatives setting on apt-based systems."; \
+	else \
+		sudo $(YUM) install -y alternatives; \
+		if ! command -v nvim >/dev/null 2>&1; then \
+			echo "nvim is not installed; run 'make nvim' first." >&2; \
+			exit 1; \
+		fi; \
+		if alternatives --display vim >/dev/null 2>&1; then \
+			if ! alternatives --display vim | grep -Fq '/usr/bin/nvim'; then \
+				sudo alternatives --install /usr/bin/vim vim /usr/bin/nvim 30; \
+			fi; \
+		else \
+			sudo alternatives --install /usr/bin/vim vim /usr/bin/nvim 30; \
+		fi; \
+		sudo alternatives --set vim /usr/bin/nvim; \
+	fi
+
 .PHONY: nvim-settings-repo
 nvim-settings-repo:
 	@mkdir -p "$$HOME/.config" "$$HOME/.vim"
