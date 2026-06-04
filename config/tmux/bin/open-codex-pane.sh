@@ -19,19 +19,23 @@ require_cmd() {
 main() {
   local target_pane="$1"
   local dir="$2"
-  local open_codex_pane_script
+  local codex_pane_script
 
   if [[ $# -ne 2 ]]; then
-    usage
+    usage >&2
     exit 1
   fi
 
   require_cmd tmux
-  require_cmd codex
-  open_codex_pane_script="$HOME/dotfiles/config/tmux/bin/open-codex-pane.sh"
+  codex_pane_script="$HOME/dotfiles/config/tmux/bin/codex-pane.sh"
 
-  tmux respawn-pane -k -t "$target_pane" -c "$dir" >/dev/null
-  "$open_codex_pane_script" "$target_pane" "$dir"
+  if [[ ! -x "$codex_pane_script" ]]; then
+    echo "Error: '$codex_pane_script' is required." >&2
+    exit 1
+  fi
+
+  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" >/dev/null
+  tmux select-pane -t "$target_pane"
 }
 
 main "$@"
