@@ -23,6 +23,21 @@ log "pwd: $(pwd)"
 log "user: ${USER:-unknown} host: ${HOSTNAME:-unknown}"
 log "args: [$#] -> $*"
 
+resolve_sender() {
+  local ssh_connection sender
+  ssh_connection="${SSH_CONNECTION:-}"
+  if [ -n "$ssh_connection" ]; then
+    # SSH_CONNECTION = client_ip client_port server_ip server_port
+    sender="$(printf '%s\n' "$ssh_connection" | awk '{print $3}')"
+    if [ -n "$sender" ]; then
+      printf '%s\n' "$sender"
+      return 0
+    fi
+  fi
+
+  printf '%s\n' "${HOSTNAME:-unknown}"
+}
+
 # Accept JSON from argument only to avoid STDIN block
 if [ $# -ge 1 ]; then
   payload="$1"
@@ -38,6 +53,28 @@ else
   log "payload_source: $source_desc (no args)"
   # No payload provided; do nothing but keep Codex running
   exit 0
+fi
+
+sender="$(resolve_sender)"
+log "sender: $sender"
+
+if augmented_payload="$(printf '%s\n' "$payload" | python3 -c '
+import json
+import sys
+
+sender = sys.argv[1]
+raw = sys.stdin.read()
+value = json.loads(raw)
+if isinstance(value, dict):
+    value["sender"] = sender
+    sys.stdout.write(json.dumps(value, separators=(",", ":")))
+else:
+    sys.stdout.write(raw)
+' "$sender" 2>/dev/null)"; then
+  payload="$augmented_payload"
+  log "payload_augmented: object sender added"
+else
+  log "payload_augmented: skipped (invalid json payload)"
 fi
 
 # Try to open TCP connection; on failure, log and exit 0 to avoid breaking Codex
