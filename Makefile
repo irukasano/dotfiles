@@ -435,6 +435,23 @@ yazi: fzf ag ## yazi filer
 .PHONY: yazi-all
 yazi-all: yazi yazi-settings yazi-plugins ## yazi 本体+設定+plugin
 
+.PHONY: yazi-bookmark-plugin-patch
+yazi-bookmark-plugin-patch: ## bookmarks plugin に PR #61 相当の暫定互換 patch を適用
+	@plugin_file="$(HOME)/.config/yazi/plugins/bookmarks.yazi/main.lua"; \
+	if [ ! -f "$$plugin_file" ]; then \
+		echo "bookmark plugin not found: $$plugin_file"; \
+		echo "install it first with 'make yazi-plugins'"; \
+		exit 1; \
+	fi; \
+	if rg -q 'ya\.mgr_emit\(' "$$plugin_file"; then \
+		sed -i 's/ya\.mgr_emit(\"cd\"/ya.emit(\"cd\"/' "$$plugin_file"; \
+		sed -i 's/ya\.mgr_emit(\"reveal\"/ya.emit(\"reveal\"/' "$$plugin_file"; \
+		echo "applied bookmark compatibility patch from dedukun/bookmarks.yazi PR #61"; \
+	else \
+		echo "bookmark plugin already patched or upstream updated"; \
+	fi; \
+	rg -n 'ya\.(mgr_emit|emit)\(' "$$plugin_file"
+
 yazi-settings:
 	mkdir -p $(HOME)/.config/yazi
 	rm -rf ~/.config/yazi/flavors
