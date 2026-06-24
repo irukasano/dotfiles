@@ -4,7 +4,7 @@ set -euo pipefail
 usage() {
   cat <<EOF
 Usage:
-  $(basename "$0") <target-pane-id> <dir>
+  $(basename "$0") <target-pane-id> <dir> [codex args...]
 EOF
 }
 
@@ -21,7 +21,7 @@ main() {
   local dir="$2"
   local codex_pane_script
 
-  if [[ $# -ne 2 ]]; then
+  if [[ $# -lt 2 ]]; then
     usage >&2
     exit 1
   fi
@@ -34,7 +34,7 @@ main() {
     exit 1
   fi
 
-  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" >/dev/null
+  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" "${@:3}" >/dev/null
   tmux select-pane -t "$target_pane"
 }
 

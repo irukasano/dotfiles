@@ -4,17 +4,12 @@ set -euo pipefail
 usage() {
   cat <<EOF
 Usage:
-  $(basename "$0")
+  $(basename "$0") [codex args...]
 EOF
 }
 
 main() {
   local exit_code codex_launcher
-
-  if [[ $# -ne 0 ]]; then
-    usage >&2
-    exit 1
-  fi
 
   codex_launcher="$HOME/dotfiles/bin/codex-with-gh"
   if [[ ! -x "$codex_launcher" ]]; then
@@ -22,7 +17,7 @@ main() {
     exit 1
   fi
   set +e
-  "$codex_launcher"
+  "$codex_launcher" "$@"
   exit_code=$?
   set -e
 
