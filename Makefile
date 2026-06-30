@@ -471,6 +471,7 @@ yazi-plugins: yazi
 	ln -sfn $(PWD)/config/yazi/plugins/svn.yazi $(HOME)/.config/yazi/plugins/svn.yazi
 	ln -sfn $(PWD)/config/yazi/plugins/dirsort.yazi $(HOME)/.config/yazi/plugins/dirsort.yazi
 	ln -sfn $(PWD)/config/yazi/scripts/zip-dir.sh $(HOME)/.config/yazi/scripts/zip-dir.sh
+	ln -sfn $(PWD)/config/yazi/scripts/convert-csv-to-cp932.sh $(HOME)/.config/yazi/scripts/convert-csv-to-cp932.sh
 	@if ! grep -Fqx 'use = "imsi32/yatline"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add imsi32/yatline; fi
 	@if ! grep -Fqx 'use = "yazi-rs/plugins:full-border"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add yazi-rs/plugins:full-border; fi
 	@if ! grep -Fqx 'use = "yazi-rs/plugins:chmod"' $(HOME)/.config/yazi/package.toml 2>/dev/null; then ya pkg add yazi-rs/plugins:chmod; fi
