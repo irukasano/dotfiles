@@ -422,6 +422,11 @@ run  = "plugin svn commit"
 desc = "SVN Commit"
 
 [[mgr.prepend_keymap]]
+on   = ["S", "l"]
+run  = 'shell "lazysvn" --block'
+desc = "Lazysvn"
+
+[[mgr.prepend_keymap]]
 on   = ["S", "s"]
 run  = "plugin svn status"
 desc = "SVN Status"
