@@ -53,7 +53,7 @@ resolve_tmux_context() {
     return 1
   fi
 
-  printf '%s\t%s\n' "$session_name" "$window_name"
+  printf '%s\t%s\t%s\n' "$pane_id" "$session_name" "$window_name"
 }
 
 # Accept JSON from argument only to avoid STDIN block
@@ -78,11 +78,12 @@ log "sender: $sender"
 
 tmux_session=""
 tmux_window=""
+tmux_pane=""
 if tmux_context="$(resolve_tmux_context)"; then
-  IFS=$'\t' read -r tmux_session tmux_window <<EOF
+  IFS=$'\t' read -r tmux_pane tmux_session tmux_window <<EOF
 $tmux_context
 EOF
-  log "tmux: session=$tmux_session window=$tmux_window"
+  log "tmux: pane=$tmux_pane session=$tmux_session window=$tmux_window"
 else
   log "tmux: unavailable"
 fi
@@ -92,12 +93,15 @@ import json
 import sys
 
 sender = sys.argv[1]
-tmux_session = sys.argv[2]
-tmux_window = sys.argv[3]
+tmux_pane = sys.argv[2]
+tmux_session = sys.argv[3]
+tmux_window = sys.argv[4]
 raw = sys.stdin.read()
 value = json.loads(raw)
 if isinstance(value, dict):
     value["sender"] = sender
+    if tmux_pane:
+        value["tmux_pane"] = tmux_pane
     if tmux_session:
         value["tmux_session"] = tmux_session
     if tmux_window:
@@ -105,7 +109,7 @@ if isinstance(value, dict):
     sys.stdout.write(json.dumps(value, separators=(",", ":")))
 else:
     sys.stdout.write(raw)
-' "$sender" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
+' "$sender" "$tmux_pane" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
   payload="$augmented_payload"
   log "payload_augmented: object sender/tmux added"
 else
