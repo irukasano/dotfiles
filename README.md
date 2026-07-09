@@ -5,7 +5,8 @@
 irukasano 用 dotfiles です。
 
 * lessで h を左スクロール、l を右スクロールにする
-* less で色つけする 
+* less で色つけする
+* markdown は `leaf` で閲覧する
 * mysql コマンドラインクライアントに色づけする* 
 * my default gitignore 
 
@@ -34,29 +35,14 @@ $ ln -s /usr/local/bin/python3.8 /usr/bin/python3
 $ ln -s /usr/local/bin/pip3.8 /usr/bin/pip3
 ```
 
-### add LESSOPEN, LESSCLOSE
+### add LESSOPEN
 
 <~/.config/fish/config.fish>
 set -x LESS "-R"
 set -x LESSOPEN "||/usr/bin/lesspipe.sh %s"
-set -x LESSCLOSE "~/dotfiles/lessclose.sh %s %s"
 
-### もしLESSの色付け整形がうまくいかない場合
+### markdown viewer
 
-とくにCentOS6ならlessバージョンが古いので以下パッチをあてる
-
-</usr/bin/lesspipe.sh>
-
-```diff
-36a37,44
-> # Allow for user defined filters
-> if [ -x ~/.lessfilter ]; then
->         ~/.lessfilter "$1"
->         if [ $? -eq 0 ]; then
->                 exit 0
->         fi
-> fi
->
-```
+`leaf` は `make all` に含まれます。単体では `make leaf` でもインストールできます。
 
 

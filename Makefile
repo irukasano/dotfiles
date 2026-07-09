@@ -90,7 +90,7 @@ cargo:
 # tools-all
 #---------------------------------------------------------------------------------#
 .PHONY: tools-all
-tools-all: init python3 grcat pandoc source-highlight dotfiles-repo ## 初期 dotfiles
+tools-all: init python3 grcat pandoc source-highlight leaf dotfiles-repo ## 初期 dotfiles
 #---------------------------------------------------------------------------------#
 # grcat
 #---------------------------------------------------------------------------------#
@@ -113,6 +113,13 @@ pandoc:
 .PHONY: source-highlight
 source-highlight:
 	sudo $(YUM) install -y source-highlight
+
+#---------------------------------------------------------------------------------#
+# leaf
+#---------------------------------------------------------------------------------#
+.PHONY: leaf
+leaf: ## leaf をインストール
+	curl -fsSL https://leaf.rivolink.mg/install.sh | sh
 
 #---------------------------------------------------------------------------------#
 # searcher
