@@ -75,6 +75,10 @@ fi
 
 sender="$(resolve_sender)"
 log "sender: $sender"
+sender_kitty_tag="${CODEX_SENDER_KITTY_TAG:-}"
+if [ -n "$sender_kitty_tag" ]; then
+  log "sender_kitty_tag: $sender_kitty_tag"
+fi
 
 tmux_session=""
 tmux_window=""
@@ -93,13 +97,16 @@ import json
 import sys
 
 sender = sys.argv[1]
-tmux_pane = sys.argv[2]
-tmux_session = sys.argv[3]
-tmux_window = sys.argv[4]
+sender_kitty_tag = sys.argv[2]
+tmux_pane = sys.argv[3]
+tmux_session = sys.argv[4]
+tmux_window = sys.argv[5]
 raw = sys.stdin.read()
 value = json.loads(raw)
 if isinstance(value, dict):
     value["sender"] = sender
+    if sender_kitty_tag:
+        value["sender_kitty_tag"] = sender_kitty_tag
     if tmux_pane:
         value["tmux_pane"] = tmux_pane
     if tmux_session:
@@ -109,7 +116,7 @@ if isinstance(value, dict):
     sys.stdout.write(json.dumps(value, separators=(",", ":")))
 else:
     sys.stdout.write(raw)
-' "$sender" "$tmux_pane" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
+' "$sender" "$sender_kitty_tag" "$tmux_pane" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
   payload="$augmented_payload"
   log "payload_augmented: object sender/tmux added"
 else

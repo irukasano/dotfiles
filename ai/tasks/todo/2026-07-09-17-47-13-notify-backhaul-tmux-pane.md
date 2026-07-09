@@ -13,6 +13,19 @@
 - 未確定事項: なし
 - ユーザー確認が必要な項目: なし
 
+### 2026-07-09 18:00 : notify backhaul sender kitty tag
+- 目的: Codex 完了通知に `CODEX_SENDER_KITTY_TAG` が設定されているときだけ `sender_kitty_tag` を含める
+- 変更対象: `bin/notify-backhaul.sh` の環境変数解決処理と payload 拡張処理
+- 非変更対象: 通知転送先、既存の `sender` / `tmux_*` の仕様、kitty 側設定
+- 入出力:
+  - 入力: Codex の notify payload、実行時環境変数 `CODEX_SENDER_KITTY_TAG`
+  - 出力: notify payload のトップレベル object に `sender_kitty_tag` を追加する
+- 運用方法: `CODEX_SENDER_KITTY_TAG` が空でないときだけ `sender_kitty_tag` を追加する
+- 失敗時挙動: 環境変数未設定、空文字、JSON 変換失敗時は既存通知をそのまま送る
+- 既存機能への影響: 受信側が kitty tag で送信元を識別できるようになる
+- 未確定事項: なし
+- ユーザー確認が必要な項目: なし
+
 ## Plan
 
 ### 2026-07-09 17:47 : notify backhaul tmux pane
@@ -21,6 +34,13 @@
 - [x] HLD の未確定事項をユーザー確認する
 - [x] 合意済み HLD をこのファイルに反映する
 - [x] `bin/notify-backhaul.sh` に `tmux_pane` を追加する
+- [x] 構文確認と payload 変換検証を行う
+- [x] Review に原因、修正内容、検証結果を記録する
+
+### 2026-07-09 18:00 : notify backhaul sender kitty tag
+- [x] 既存の `bin/notify-backhaul.sh` と同セッションの記録を確認する
+- [x] HLD をこのファイルに記録する
+- [x] `CODEX_SENDER_KITTY_TAG` を `sender_kitty_tag` として payload へ追加する
 - [x] 構文確認と payload 変換検証を行う
 - [x] Review に原因、修正内容、検証結果を記録する
 
@@ -35,4 +55,14 @@
 - 検証: fake `tmux` を `PATH` 先頭に置き `TMUX_PANE='%7'` で実行し、ログに `tmux: pane=%7 session=dev window=editor` が出ることを確認した
 - 検証: 同じ実行を `bash -x` で追跡し、変換後 payload が `{"msg":"ok","sender":"host-a","tmux_pane":"%7","tmux_session":"dev","tmux_window":"editor"}` になることを確認した
 - 検証: `TMUX_PANE` なしの実行でログに `tmux: unavailable` と `payload_augmented: object sender/tmux added` が出ることを確認した
+- 検証制約: このサンドボックスでは `/dev/tcp/127.0.0.1/53245` への接続が `Operation not permitted` で失敗するため、実転送先での受信 payload までは未確認
+
+### 2026-07-09 18:00 : notify backhaul sender kitty tag
+- 原因: 既存通知には送信元 host と tmux 情報しかなく、kitty 側で付けた送信元タグを受信側へ渡せなかった
+- 修正内容: `bin/notify-backhaul.sh` が `CODEX_SENDER_KITTY_TAG` を読み、空でないときだけ `sender_kitty_tag` として payload へ追加するようにした
+- 修正内容: ログにも `sender_kitty_tag` を出すようにし、実行時に値の有無を追えるようにした
+- 失敗時挙動: 環境変数未設定、空文字、JSON 変換失敗時は既存通知を維持する
+- 検証: `bash -n bin/notify-backhaul.sh` が成功した
+- 検証: fake `tmux` と `CODEX_SENDER_KITTY_TAG='focus-a'` を使った `bash -x` 実行で、変換後 payload が `{"msg":"ok","sender":"host-a","sender_kitty_tag":"focus-a","tmux_pane":"%7","tmux_session":"dev","tmux_window":"editor"}` になることを確認した
+- 検証: `CODEX_SENDER_KITTY_TAG` 未設定の `bash -x` 実行で、変換後 payload が `{"msg":"ok","sender":"host-b"}` のままで `sender_kitty_tag` が追加されないことを確認した
 - 検証制約: このサンドボックスでは `/dev/tcp/127.0.0.1/53245` への接続が `Operation not permitted` で失敗するため、実転送先での受信 payload までは未確認
