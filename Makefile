@@ -286,7 +286,7 @@ codex-config:
 			'approval_policy = "on-request"' \
 			'approvals_reviewer = "guardian_subagent"' \
 			'model = "gpt-5.4"' \
-			'notify = ["'"$$HOME"'/dotfiles/bin/notify-backhaul.sh"]' \
+			'notify = ["'"$$HOME"'/.local/bin/notify-backhaul.sh"]' \
 			'personality = "pragmatic"' \
 			'' \
 			'[tui]' \
