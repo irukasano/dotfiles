@@ -38,6 +38,29 @@ resolve_sender() {
   printf '%s\n' "${HOSTNAME:-unknown}"
 }
 
+resolve_remote_ip() {
+  local ssh_connection remote_ip
+  ssh_connection="${SSH_CONNECTION:-}"
+  if [ -n "$ssh_connection" ]; then
+    remote_ip="$(printf '%s\n' "$ssh_connection" | awk '{print $3}')"
+    if [ -n "$remote_ip" ]; then
+      printf '%s\n' "$remote_ip"
+      return 0
+    fi
+  fi
+
+  printf '%s\n' "127.0.0.1"
+}
+
+resolve_remote_user() {
+  if [ -n "${USER:-}" ]; then
+    printf '%s\n' "$USER"
+    return 0
+  fi
+
+  id -un 2>/dev/null || printf '%s\n' "unknown"
+}
+
 resolve_tmux_context() {
   local pane_id session_name window_name
 
@@ -75,6 +98,9 @@ fi
 
 sender="$(resolve_sender)"
 log "sender: $sender"
+remote_ip="$(resolve_remote_ip)"
+remote_user="$(resolve_remote_user)"
+log "remote: user=$remote_user ip=$remote_ip"
 sender_kitty_tag="${CODEX_SENDER_KITTY_TAG:-}"
 if [ -n "$sender_kitty_tag" ]; then
   log "sender_kitty_tag: $sender_kitty_tag"
@@ -97,14 +123,18 @@ import json
 import sys
 
 sender = sys.argv[1]
-sender_kitty_tag = sys.argv[2]
-tmux_pane = sys.argv[3]
-tmux_session = sys.argv[4]
-tmux_window = sys.argv[5]
+remote_ip = sys.argv[2]
+remote_user = sys.argv[3]
+sender_kitty_tag = sys.argv[4]
+tmux_pane = sys.argv[5]
+tmux_session = sys.argv[6]
+tmux_window = sys.argv[7]
 raw = sys.stdin.read()
 value = json.loads(raw)
 if isinstance(value, dict):
     value["sender"] = sender
+    value["remote_ip"] = remote_ip
+    value["remote_user"] = remote_user
     if sender_kitty_tag:
         value["sender_kitty_tag"] = sender_kitty_tag
     if tmux_pane:
@@ -116,9 +146,9 @@ if isinstance(value, dict):
     sys.stdout.write(json.dumps(value, separators=(",", ":")))
 else:
     sys.stdout.write(raw)
-' "$sender" "$sender_kitty_tag" "$tmux_pane" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
+' "$sender" "$remote_ip" "$remote_user" "$sender_kitty_tag" "$tmux_pane" "$tmux_session" "$tmux_window" 2>/dev/null)"; then
   payload="$augmented_payload"
-  log "payload_augmented: object sender/tmux added"
+  log "payload_augmented: object sender/remote/tmux added"
 else
   log "payload_augmented: skipped (invalid json payload)"
 fi
