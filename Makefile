@@ -442,6 +442,11 @@ yazi: fzf ag ## yazi filer
 .PHONY: yazi-all
 yazi-all: yazi yazi-settings yazi-plugins ## yazi 本体+設定+plugin
 
+.PHONY: lazysvn
+lazysvn: ## lazysvn (SVN TUI)
+	curl -fsSL https://lazysvn.sawirstudio.com/install.sh | sh
+	@command -v lazysvn >/dev/null 2>&1 && lazysvn --version || echo "lazysvn installed; reopen your shell if command is not yet on PATH"
+
 .PHONY: yazi-bookmark-plugin-patch
 yazi-bookmark-plugin-patch: ## bookmarks plugin に PR #61 相当の暫定互換 patch を適用
 	@plugin_file="$(HOME)/.config/yazi/plugins/bookmarks.yazi/main.lua"; \
