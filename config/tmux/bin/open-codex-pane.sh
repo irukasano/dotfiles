@@ -20,6 +20,7 @@ main() {
   local target_pane="$1"
   local dir="$2"
   local codex_pane_script
+  local codex_pane
 
   if [[ $# -lt 2 ]]; then
     usage >&2
@@ -34,8 +35,8 @@ main() {
     exit 1
   fi
 
-  tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" "${@:3}" >/dev/null
-  tmux select-pane -t "$target_pane"
+  codex_pane="$(tmux split-window -h -P -F '#{pane_id}' -p 40 -t "$target_pane" -c "$dir" "$codex_pane_script" "${@:3}")"
+  tmux select-pane -t "$codex_pane"
 }
 
 main "$@"
