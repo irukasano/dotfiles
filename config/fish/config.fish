@@ -84,6 +84,8 @@ end
 
 if test "$TERM_PROGRAM" = "vscode"
     set -x GIT_EDITOR "code --wait"
+else if command -q nvim
+    set -x GIT_EDITOR "nvim"
 else
     set -x GIT_EDITOR "vim"
 end
