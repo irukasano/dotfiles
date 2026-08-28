@@ -5,7 +5,7 @@
 
 # Max length of the OSC 52 sequence.  Sequences longer than this will not be
 # sent to the terminal.
-OSC_52_MAX_SEQUENCE="100000"
+OSC_52_MAX_SEQUENCE="500000"
 
 # Write an error message and exit.
 # Usage: <message>
