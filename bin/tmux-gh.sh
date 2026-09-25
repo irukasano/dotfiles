@@ -75,7 +75,15 @@ ensure_gh_auth() {
 
 cache_dir() {
   local user_name="${USER:-user}"
-  printf '/tmp/tmux-gh-%s\n' "$user_name"
+  local repository_top_level cache_key
+
+  if ! repository_top_level="$(git rev-parse --show-toplevel 2>/dev/null)"; then
+    echo "Error: tmux-gh cache requires a Git repository." >&2
+    return 1
+  fi
+
+  cache_key="$(printf '%s' "$repository_top_level" | cksum | awk '{print $1 "-" $2}')"
+  printf '/tmp/tmux-gh-%s/%s\n' "$user_name" "$cache_key"
 }
 
 cache_file_for_mode() {

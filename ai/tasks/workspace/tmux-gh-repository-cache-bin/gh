@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+case "${1:-}" in
+  --ensure-auth)
+    exit 0
+    ;;
+  issue)
+    case "${2:-}" in
+      list)
+        printf 'fetch-list:%s\n' "$PWD" >>"${TMUX_GH_TEST_LOG:?}"
+        printf '42\037issue-%s\037label\0372026-09-07T00:00:00Z\n' "$(basename "$PWD")"
+        ;;
+      view)
+        printf 'fetch-preview:%s\n' "$PWD" >>"${TMUX_GH_TEST_LOG:?}"
+        printf '{"number":42,"title":"preview-%s","state":"OPEN","author":{"login":"tester"},"assignees":[],"labels":[],"updatedAt":"2026-09-07T00:00:00Z","url":"https://example.test","body":"fixture"}\n' "$(basename "$PWD")"
+        ;;
+      *)
+        exit 1
+        ;;
+    esac
+    ;;
+  *)
+    exit 1
+    ;;
+esac

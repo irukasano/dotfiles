@@ -283,6 +283,7 @@ codex-config:
 		printf '%s\n' \
 			"$$BEGIN_MARKER" \
 			'sandbox_mode = "workspace-write"' \
+			'sandbox_workspace_write.network_access = true' \
 			'approval_policy = "on-request"' \
 			'approvals_reviewer = "guardian_subagent"' \
 			'model = "gpt-5.4"' \
