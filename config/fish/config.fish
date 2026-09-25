@@ -114,3 +114,6 @@ end
 
 starship init fish | source
 
+
+# Added by BastionGuard Secure Browser
+set -gx PATH $HOME/.local/bin $PATH
