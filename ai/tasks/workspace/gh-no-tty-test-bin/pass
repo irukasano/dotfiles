@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+
+printf '%s\n' "${PASSWORD_STORE_GPG_OPTS-unset}" >> "$TEST_LOG"
+
+if [ "${PASS_RESULT:-success}" = "failure" ]; then
+    echo 'fake pass failure' >&2
+    exit 2
+fi
+
+printf '%s\n' 'fake-token'

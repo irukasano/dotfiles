@@ -2,6 +2,11 @@
 set -eu
 
 token_name='github/cli-token'
+has_tty=0
+
+if [ -t 0 ] && [ -t 2 ]; then
+    has_tty=1
+fi
 
 set_gpg_tty() {
     if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
@@ -16,6 +21,15 @@ ensure_pass() {
     if ! command -v pass >/dev/null 2>&1; then
         echo "gh: pass コマンドが必要です。インストールしてください" >&2
         exit 127
+    fi
+}
+
+show_token() {
+    if [ "$has_tty" -eq 1 ]; then
+        pass show "$token_name"
+    else
+        PASSWORD_STORE_GPG_OPTS="${PASSWORD_STORE_GPG_OPTS:-} --batch --pinentry-mode error" \
+            pass show "$token_name"
     fi
 }
 
@@ -44,7 +58,7 @@ EOF
         fi
         printf '%s\n' "$token" | pass insert -m -f "$token_name" >/dev/null
     else
-        if [ ! -t 0 ] || [ ! -t 2 ]; then
+        if [ "$has_tty" -ne 1 ]; then
             echo "gh: 対話端末がないため更新できません。'gh auth update-token --with-token' を使ってください" >&2
             return 1
         fi
@@ -78,9 +92,9 @@ fi
 ensure_pass
 set_gpg_tty
 
-if ! pass show "$token_name" >/dev/null 2>&1; then
-    if [ ! -t 0 ] || [ ! -t 2 ]; then
-        echo "gh: $token_name を非対話では復元できません。先に 'gh --ensure-auth' または 'gh auth update-token' を実行してください" >&2
+if ! show_token >/dev/null 2>&1; then
+    if [ "$has_tty" -ne 1 ]; then
+        echo "gh: $token_name を非対話では復元できません。別の対話端末で 'pass show $token_name >/dev/null' を実行してから再試行してください" >&2
         exit 1
     fi
 
@@ -88,7 +102,7 @@ if ! pass show "$token_name" >/dev/null 2>&1; then
     update_token
 fi
 
-token="$(pass show "$token_name" | head -n 1)"
+token="$(show_token | head -n 1)"
 if [ -z "$token" ]; then
     echo "gh: $token_name からトークンを取得できませんでした" >&2
     exit 1

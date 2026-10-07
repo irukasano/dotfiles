@@ -119,3 +119,9 @@
 - Rule: データ移行を提案するときは、移行方針と、専用 skill・一回限りの既存コマンド・手作業のどれで実行するかを明示して区別する。
 - Scope: データ移行、提案、運用、実行手段
 - Review: `ai/tasks/todo/2026-09-25-17-01-48-lesson-migration.md#2026-09-25-1701--lesson`
+## no-tty 認証試行で pinentry を起動しない
+
+- ID: `1026e089-0f75-44e2-998c-6fc4ed2ef6cf`
+- Rule: no-tty 実行で認証キャッシュの状態を調べるときは、キャッシュ切れ時に pinentry や対話 UI を起動しないことを明示的に保証し、単なる復号試行の成否を判定に使わない。
+- Scope: CLIラッパー、GPG、pinentry、no-tty、認証
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--no-tty-での-pinentry-起動リスク訂正`
