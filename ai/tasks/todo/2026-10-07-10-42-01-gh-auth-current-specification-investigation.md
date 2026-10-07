@@ -11,6 +11,17 @@
 - 未確定事項: hash が一致するか、Codex 実行時に環境変数が変換されているか。
 - ユーザー確認が必要な項目: hash 値を会話へ貼ること（値自体は token ではないが、照合用の識別子となる）。
 
+### 2026-10-07 12:16 : Git credential helper の対話的 GPG 復号
+- 目的: 通常 terminal での HTTPS `git pull` / `git fetch` が、`pass + gpg` に保存した GitHub token を credential helper 経由で使えるようにする。
+- 変更対象: `bin/gh` の `auth git-credential` 呼出し時だけの TTY 判定と `GPG_TTY` 設定、対応する fixture。
+- 非変更対象: Git の credential helper 設定、`pass` store、GPG 設定、Codex launcher、`gh` の一般的な no-TTY 挙動。
+- 入出力: Git credential protocol の stdin/stdout は `/usr/bin/gh auth git-credential` に維持する。GPG/pinentry の入出力だけ、利用可能な制御端末 `/dev/tty` を `GPG_TTY` として参照する。
+- 運用方法: `auth git-credential` かつ `/dev/tty` が読み書き可能な場合にだけ既存の `pass show` 経路を使う。GPG cache 切れなら、その terminal 上で pinentry を表示する。
+- 失敗時挙動: 制御端末がない場合（Codex/no-TTY/CI）は、`pass` や pinentry を起動せず、現在と同じ `GH_TOKEN` 設定要求で失敗する。
+- 既存機能への影響: terminal からの Git HTTPS 操作が復旧する。非対話 `gh` と Codex 内の GPG 復号禁止は維持する。
+- 未確定事項: `/dev/tty` を用いる GPG pinentry が対象環境で正しく表示されるか。
+- ユーザー確認が必要な項目: 上記の「credential helper に限る」「制御端末なしでは復号しない」という挙動で実装してよいか。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 目的: 過去の gh / Codex 認証調整の内容と、現行の対話・非対話における `pass + gpg` 復号条件を説明する。
 - 変更対象: 調査・記録のみ。
@@ -79,6 +90,12 @@
 
 ## Plan
 
+### 2026-10-07 12:16 : Git credential helper の対話的 GPG 復号
+- [x] `auth git-credential` と `/dev/tty` の利用可能性を起動時に判定し、通常の stdin/stderr TTY 判定と区別する。
+- [x] credential helper に限り、制御端末を `GPG_TTY` に設定して既存の `pass` 復号経路へ進める。
+- [x] 制御端末のない credential helper、一般の no-TTY `gh`、`GH_TOKEN` 設定済み経路が従来どおりであることを fixture で確認する。
+- [x] 構文・fixture・差分チェックを実行し、実 terminal の `git pull` による pinentry/credential の確認手順を Review に記録する。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - [x] 関連スクリプト、Git 履歴、既存の認証調査記録を確認する。
 - [x] 対話・非対話・`--ensure-auth`・Codex 起動時の分岐を静的に確認する。
@@ -122,6 +139,12 @@
 - [x] `sh -n`、`git diff --check`、`git diff master --check` を実行し、Review に修正内容と検証結果を記録する。
 
 ## Review
+
+### 2026-10-07 12:16 : Git credential helper の対話的 GPG 復号
+- 原因: `credential.https://github.com.helper` は `!/home/sano/bin/gh auth git-credential` を呼び出す。Git は credential protocol を stdin pipe で渡すため、親が対話 terminal でも `bin/gh` は stdin/stderr 両方の TTY を要求する既存判定で no-TTY と誤判定していた。
+- 修正内容: `auth git-credential` に限り、読み書き可能な `/dev/tty` から端末名を取得できれば対話可能とみなし、その値を `GPG_TTY` に設定する。credential protocol の stdin/stdout は変更せず `/usr/bin/gh auth git-credential` に渡す。制御端末がなければ `pass` / GPG / pinentry を呼ばず、従来どおり `GH_TOKEN` を要求して終了する。
+- 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は no-TTY の credential helper が `pass` を呼ばないこと、疑似 terminal で credential helper が `pass` を呼び `GPG_TTY=/dev/pts/...` を渡すこと、credential protocol の password 応答を確認した。
+- 実機確認: 実 terminal の `git pull` で、GPG cache が切れていれば pinentry が terminal に表示され、認証後に pull が継続することを確認する必要がある。
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 該当履歴: 2026-04-07 の `62806b1`（`Codex用のGH認証とGPG設定を整備`）で、`pinentry-curses` と `GPG_TTY` を整備し、非対話時は `pass insert` を起動せず、事前の `gh --ensure-auth` を促す仕様になった。2026-04-09 の `8c356c5` は token 更新用の `gh auth update-token` を追加した変更である。

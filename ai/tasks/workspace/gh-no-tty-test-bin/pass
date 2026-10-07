@@ -2,6 +2,7 @@
 set -eu
 
 printf '%s\n' "${PASSWORD_STORE_GPG_OPTS-unset}" >> "$TEST_LOG"
+printf 'GPG_TTY=%s\n' "${GPG_TTY-unset}" >> "$TEST_LOG"
 
 if [ "${PASS_RESULT:-success}" = "failure" ]; then
     echo 'fake pass failure' >&2

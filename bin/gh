@@ -3,13 +3,21 @@ set -eu
 
 token_name='github/cli-token'
 has_tty=0
+credential_tty=''
 
 if [ -t 0 ] && [ -t 2 ]; then
     has_tty=1
 fi
 
+if [ "${1:-}" = "auth" ] && [ "${2:-}" = "git-credential" ] && \
+    [ -r /dev/tty ] && [ -w /dev/tty ]; then
+    credential_tty=$(tty </dev/tty 2>/dev/null || true)
+fi
+
 set_gpg_tty() {
-    if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
+    if [ -n "$credential_tty" ]; then
+        export GPG_TTY="$credential_tty"
+    elif [ -t 0 ] && command -v tty >/dev/null 2>&1; then
         current_tty=$(tty 2>/dev/null || true)
         if [ -n "${current_tty:-}" ] && [ "$current_tty" != "not a tty" ]; then
             export GPG_TTY="$current_tty"
@@ -84,7 +92,7 @@ if [ -n "${GH_TOKEN:-}" ]; then
     exec /usr/bin/gh "$@"
 fi
 
-if [ "$has_tty" -ne 1 ]; then
+if [ "$has_tty" -ne 1 ] && [ -z "$credential_tty" ]; then
     echo 'gh: 非対話では GH_TOKEN を設定してください' >&2
     exit 1
 fi

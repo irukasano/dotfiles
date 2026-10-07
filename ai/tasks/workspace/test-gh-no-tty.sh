@@ -42,6 +42,19 @@ assert_contains 'GH_TOKEN を設定してください' "$tmp_dir/no-tty.err"
 assert_not_contains 'fake-token' "$tmp_dir/no-tty.out"
 assert_not_contains 'fake-token' "$tmp_dir/no-tty.err"
 
+no_tty_credential_log="$tmp_dir/no-tty-credential.log"
+if printf 'protocol=https\nhost=github.com\n\n' | \
+    env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_LOG="$no_tty_credential_log" \
+    "$target" auth git-credential >"$tmp_dir/no-tty-credential.out" 2>"$tmp_dir/no-tty-credential.err"; then
+    echo 'expected no-tty git credential authentication failure without GH_TOKEN' >&2
+    exit 1
+fi
+if [ -e "$no_tty_credential_log" ]; then
+    echo 'did not expect pass to run for git credential without a controlling terminal' >&2
+    exit 1
+fi
+assert_contains 'GH_TOKEN を設定してください' "$tmp_dir/no-tty-credential.err"
+
 token_command_log="$tmp_dir/token-command.log"
 env GH_TOKEN='fixture-token' PATH="$fake_bin:$PATH" TEST_LOG="$token_command_log" \
     PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=failure \
@@ -58,5 +71,11 @@ tty_log="$tmp_dir/tty.log"
 tty_path="$fake_bin:$PATH"
 script -q -e -c "env -u GH_TOKEN PATH='$tty_path' TEST_LOG='$tty_log' PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=success '$target' --ensure-auth" /dev/null >"$tmp_dir/tty.out"
 assert_contains '--trust-model always' "$tty_log"
+
+credential_tty_log="$tmp_dir/credential-tty.log"
+script -q -e -c "printf 'protocol=https\\nhost=github.com\\n\\n' | env -u GH_TOKEN PATH='$tty_path' TEST_LOG='$credential_tty_log' PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=success '$target' auth git-credential" /dev/null >"$tmp_dir/credential-tty.out"
+assert_contains '--trust-model always' "$credential_tty_log"
+assert_contains 'GPG_TTY=/dev/pts/' "$credential_tty_log"
+assert_contains 'password=fake-token' "$tmp_dir/credential-tty.out"
 
 echo 'gh no-tty authentication tests passed'
