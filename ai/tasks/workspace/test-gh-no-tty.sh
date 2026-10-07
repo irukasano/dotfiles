@@ -54,6 +54,7 @@ if [ -e "$no_tty_credential_log" ]; then
     exit 1
 fi
 assert_contains 'GH_TOKEN を設定してください' "$tmp_dir/no-tty-credential.err"
+assert_not_contains '/dev/tty' "$tmp_dir/no-tty-credential.err"
 
 token_command_log="$tmp_dir/token-command.log"
 env GH_TOKEN='fixture-token' PATH="$fake_bin:$PATH" TEST_LOG="$token_command_log" \

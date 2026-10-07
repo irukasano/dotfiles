@@ -145,6 +145,7 @@
 - 修正内容: `auth git-credential` に限り、読み書き可能な `/dev/tty` から端末名を取得できれば対話可能とみなし、その値を `GPG_TTY` に設定する。credential protocol の stdin/stdout は変更せず `/usr/bin/gh auth git-credential` に渡す。制御端末がなければ `pass` / GPG / pinentry を呼ばず、従来どおり `GH_TOKEN` を要求して終了する。
 - 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は no-TTY の credential helper が `pass` を呼ばないこと、疑似 terminal で credential helper が `pass` を呼び `GPG_TTY=/dev/pts/...` を渡すこと、credential protocol の password 応答を確認した。
 - 実機確認: 実 terminal の `git pull` で、GPG cache が切れていれば pinentry が terminal に表示され、認証後に pull が継続することを確認する必要がある。
+- 追随修正: 制御端末のない Git hook 実行で `/dev/tty` の open error が stderr に漏れることを検出した。`tty` の stderr リダイレクトを input リダイレクトより先に評価する順序へ直し、no-TTY credential helper fixture で `/dev/tty` という診断が出ないことを確認した。
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 該当履歴: 2026-04-07 の `62806b1`（`Codex用のGH認証とGPG設定を整備`）で、`pinentry-curses` と `GPG_TTY` を整備し、非対話時は `pass insert` を起動せず、事前の `gh --ensure-auth` を促す仕様になった。2026-04-09 の `8c356c5` は token 更新用の `gh auth update-token` を追加した変更である。

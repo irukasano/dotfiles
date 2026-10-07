@@ -11,7 +11,7 @@ fi
 
 if [ "${1:-}" = "auth" ] && [ "${2:-}" = "git-credential" ] && \
     [ -r /dev/tty ] && [ -w /dev/tty ]; then
-    credential_tty=$(tty </dev/tty 2>/dev/null || true)
+    credential_tty=$(tty 2>/dev/null </dev/tty || true)
 fi
 
 set_gpg_tty() {
