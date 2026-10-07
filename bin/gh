@@ -25,12 +25,7 @@ ensure_pass() {
 }
 
 show_token() {
-    if [ "$has_tty" -eq 1 ]; then
-        pass show "$token_name"
-    else
-        PASSWORD_STORE_GPG_OPTS="${PASSWORD_STORE_GPG_OPTS:-} --batch --pinentry-mode error" \
-            pass show "$token_name"
-    fi
+    pass show "$token_name"
 }
 
 update_token() {
@@ -89,15 +84,15 @@ if [ -n "${GH_TOKEN:-}" ]; then
     exec /usr/bin/gh "$@"
 fi
 
+if [ "$has_tty" -ne 1 ]; then
+    echo 'gh: 非対話では GH_TOKEN を設定してください' >&2
+    exit 1
+fi
+
 ensure_pass
 set_gpg_tty
 
 if ! show_token >/dev/null 2>&1; then
-    if [ "$has_tty" -ne 1 ]; then
-        echo "gh: $token_name を非対話では復元できません。別の対話端末で 'pass show $token_name >/dev/null' を実行してから再試行してください" >&2
-        exit 1
-    fi
-
     echo "gh: $token_name が未設定です。これから登録します" >&2
     update_token
 fi

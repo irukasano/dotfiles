@@ -44,6 +44,17 @@
 - 未確定事項: なし。OpenAI Docs の `shell_environment_policy.ignore_default_excludes` は既定で token 名を含む環境変数を保持するとしている。実装後は fake token を使い、実 Codex sandbox で `GH_TOKEN` の有無だけを検証する。
 - ユーザー確認: 2026-10-07 に、`GH_TOKEN="$token" exec codex "$@"` で launcher から Codex へ限定継承する方針を合意。
 
+### 2026-10-07 10:42 : no-tty gh の環境 token 必須化
+- 目的: no-tty 実行では `pass` と GPG を一切起動せず、`GH_TOKEN` が設定済みの場合だけ gh を実行する。
+- 変更対象: `bin/gh` と既存 no-tty fixture。
+- 非変更対象: TTY がある場合の `pass + gpg` 復号・token 更新導線、`bin/codex-with-gh` の token 継承、token 保存先。
+- 入出力: `GH_TOKEN` と TTY 有無を入力に、token ありでは `/usr/bin/gh` 実行、token なしの no-tty では復号せず token 設定を求めるエラーを出力する。
+- 運用方法: Codex は launcher が継承した `GH_TOKEN` を使う。他の no-tty 実行では呼出元が `GH_TOKEN` を設定する。
+- 失敗時挙動: `GH_TOKEN` 未設定の no-tty 実行は `pass`、GPG、pinentry を起動せず非 0 終了する。
+- 既存機能への影響: no-tty で GPG agent キャッシュを用いる復号は利用できなくなる。対話端末では既存の認証方式を維持する。
+- 未確定事項: なし。
+- ユーザー確認: 2026-10-07 に、no-tty では `GH_TOKEN` を必須とし復号を行わない方針を合意。
+
 ## Plan
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
@@ -71,6 +82,12 @@
 - [x] `bin/codex-with-gh` で既存の対話認証完了後に token を取得・検証し、`GH_TOKEN="$token" exec codex "$@"` を実装する。
 - [x] fake `gh` / `pass` / `codex` で、token が Codex の環境にだけ渡ること、引数が保持されること、token 取得失敗時には Codex を起動しないこと、token が出力されないことを検証する。
 - [ ] fake `GH_TOKEN` を使い、実 Codex sandbox で token 値を出力せず環境変数が設定されていることを検証する（実行中 sandbox 内での nested sandbox 作成が app-server socket directory 権限エラーで失敗したため、実機 launcher で確認が必要）。
+- [x] `sh -n`、`git diff --check`、`git diff master --check` を実行し、Review に修正内容と検証結果を記録する。
+
+### 2026-10-07 10:42 : no-tty gh の環境 token 必須化
+- [x] HLD の no-tty 分岐・影響範囲をユーザーと合意する。
+- [x] `GH_TOKEN` 未設定の no-tty 分岐を `pass` 実行より前に追加する。
+- [x] fixture で no-tty token なしの場合に fake `pass` が呼ばれないこと、token ありの場合に gh 実行へ進むこと、TTY 時の既存復号経路を検証する。
 - [x] `sh -n`、`git diff --check`、`git diff master --check` を実行し、Review に修正内容と検証結果を記録する。
 
 ## Review
@@ -114,3 +131,8 @@
 ### 2026-10-07 10:42 : Codex sandbox 内の GPG 復号に関する lesson
 - ユーザー指摘: Codex CLI 内では GPG 復号を安全に行えない点を lesson として残す。
 - 根拠: `workspace-write` sandbox 内では `~/.gnupg` が read-only で、共有 gpg-agent socket のキャッシュが有効でも GPG が必要とする lock file・状態管理に失敗した。これを回避するため `.gnupg` 全体を書込み可能にすると、読み取り目的に対して権限が広すぎる。
+
+### 2026-10-07 10:42 : no-tty gh の環境 token 必須化
+- 原因: `GH_TOKEN` が未設定の no-tty 実行でも `bin/gh` が `pass show` を試すため、Codex sandbox 内で GPG 復号を試みる余地が残っていた。
+- 修正内容: `GH_TOKEN` の既存分岐直後、`pass` の存在確認・GPG TTY 設定・`pass show` より前に no-tty 判定を追加した。未設定時は `GH_TOKEN` の設定を求めて非 0 終了する。no-tty 用の GPG option 付与 helper は不要になったため、token 読出しは TTY 経路だけの通常 `pass show` にした。
+- 検証: `ai/tasks/workspace/test-gh-no-tty.sh` は、no-tty・token 未設定時に fake `pass` が呼ばれずエラーだけを返すこと、`GH_TOKEN` 設定時は fake `pass` を使わず `/usr/bin/gh --version` が成功すること、疑似 TTY では `pass` が呼ばれることを確認した。`sh -n bin/gh`、`sh -n ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。
