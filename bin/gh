@@ -104,16 +104,21 @@ fi
 ensure_pass
 set_gpg_tty
 
-if ! show_token >/dev/null 2>&1; then
-    if [ -n "$credential_tty" ]; then
+if [ -n "$credential_tty" ]; then
+    if ! token="$(show_token)"; then
         echo "gh: $token_name を復号できませんでした" >&2
         exit 1
     fi
-    echo "gh: $token_name が未設定です。これから登録します" >&2
-    update_token
+else
+    if ! show_token >/dev/null 2>&1; then
+        echo "gh: $token_name が未設定です。これから登録します" >&2
+        update_token
+    fi
+
+    token="$(show_token)"
 fi
 
-token="$(show_token | head -n 1)"
+token="$(printf '%s\n' "$token" | head -n 1)"
 if [ -z "$token" ]; then
     echo "gh: $token_name からトークンを取得できませんでした" >&2
     exit 1

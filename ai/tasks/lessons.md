@@ -161,3 +161,9 @@
 - Rule: Git credential helper のように標準入力がプロトコル用 pipe で占有される経路で対話的な GPG 復号を行う場合、GPG_TTY の設定だけでなく、復号処理の子プロセスだけの stdin を制御端末へ切り替える。親プロセスの protocol stdin は変更しない。
 - Scope: Git credential helper、GPG、pinentry、pass、TTY、標準入力
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1519--cache-切れ-pinentry-の再計画`
+## pinentry経路のstderrを捨てない
+
+- ID: `94e7154b-40b5-4788-8846-5631e8f4d7a2`
+- Rule: pinentry を起動し得る GPG 復号経路では、存在確認のために stderr を無条件に破棄しない。secret の stdout は command substitution 等で閉じ、pinentry/GPG の対話用 stderr は制御端末へ残す。
+- Scope: GPG、pinentry、pass、Git credential helper、TTY、標準エラー、認証
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1527--pinentry-stderr-の再計画`

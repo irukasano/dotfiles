@@ -30,6 +30,12 @@
 - 失敗時挙動: `/dev/tty` がない場合は引き続き `pass` を起動しない。復号失敗は token 未設定として登録を促さず、復号失敗を明示して終了する。
 - ユーザー確認が必要な項目: credential protocol の stdin を退避・復元し、`pass` のみ `/dev/tty` で実行する方式で修正してよいか。
 
+##### 2026-10-07 15:27 : pinentry stderr の再計画
+- 一次情報: `printf ... | env GPG_TTY=(tty) pass show github/cli-token </dev/tty >/dev/null` は exit 0 となった。stdin の `/dev/tty` 切替と GPG_TTY は正しい。一方、wrapper は credential helper の token 存在確認を `show_token >/dev/null 2>&1` で行っており、cache 切れ時に pinentry/GPG が必要とする stderr も破棄している。
+- 変更対象: `bin/gh` の credential helper 専用 token 取得経路。
+- 修正: credential helper は事前の無出力確認を行わず、`pass show` を一度だけ command substitution で実行する。復号 plaintext は shell 変数内に保持され stdout に出さず、stderr は terminal へ残す。失敗時は復号エラーで終了する。
+- 非変更対象: 通常 TTY の初回登録導線、no-TTY/Codex の復号禁止、Git credential protocol、token 保存先。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 目的: 過去の gh / Codex 認証調整の内容と、現行の対話・非対話における `pass + gpg` 復号条件を説明する。
 - 変更対象: 調査・記録のみ。
@@ -166,6 +172,12 @@
 - 修正内容: credential helper で制御端末を検出できたときだけ、`show_token` 内の `pass show` 子プロセスへ `< /dev/tty` を指定する。これは Git credential protocol の親 stdin を変更しないため、後続の `/usr/bin/gh auth git-credential` は元の request を受け取る。credential helper の復号失敗は token 未設定として `pass insert` を起動せず、復号失敗メッセージで終了する。
 - 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は疑似 terminal で credential helper の fake `pass` が `GPG_TTY=/dev/pts/...` と TTY stdin を受けること、token 非設定の no-TTY helper は `pass` を呼ばないこと、復号失敗時は登録導線へ進まないことを確認した。
 - 実機確認: cache を切らした terminal の `git pull` で pinentry が表示され、認証後に pull が継続することを確認する必要がある。
+
+### 2026-10-07 15:27 : pinentry stderr の再計画
+- 原因: `/dev/tty` stdin を渡した単独 `pass show` は成功したため、stdin 切替は有効だった。credential helper の wrapper だけが token 存在確認を `>/dev/null 2>&1` で行い、cache 切れの pinentry/GPG に必要な stderr を捨てていた。
+- 修正内容: credential helper は無出力の事前存在確認を廃止し、`pass show` を一度だけ command substitution で実行する。token の stdout は shell 変数に閉じ、stderr は terminal に残す。失敗時は復号エラーを返し、登録導線に進まない。
+- 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。credential helper の fixture は成功・復号失敗の双方で `pass` を一度だけ実行し、TTY stdin を受けることを確認した。
+- 実機確認: `gpgconf --kill gpg-agent` と `git credential-cache exit` の後に terminal の `git pull` を実行し、pinentry 表示と Git 操作の継続を確認する必要がある。
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 該当履歴: 2026-04-07 の `62806b1`（`Codex用のGH認証とGPG設定を整備`）で、`pinentry-curses` と `GPG_TTY` を整備し、非対話時は `pass insert` を起動せず、事前の `gh --ensure-auth` を促す仕様になった。2026-04-09 の `8c356c5` は token 更新用の `gh auth update-token` を追加した変更である。
