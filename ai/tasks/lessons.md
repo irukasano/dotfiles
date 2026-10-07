@@ -155,3 +155,9 @@
 - Rule: ネットワーク制限下の CLI が token invalid と表示しても、認証失敗と断定しない。認証ヘッダーを伏せた API 呼出しの HTTP 応答などで、通信失敗と credential 失効を分けて確認する。
 - Scope: 認証、GitHub CLI、Codex sandbox、ネットワーク制限、環境変数
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1211--token-同一性の確認`
+## credential helperのTTYはGPG入出力まで切り替える
+
+- ID: `21fe64d7-3b43-41d8-ad03-63fbce55697b`
+- Rule: Git credential helper のように標準入力がプロトコル用 pipe で占有される経路で対話的な GPG 復号を行う場合、GPG_TTY の設定だけでなく、復号処理の子プロセスだけの stdin を制御端末へ切り替える。親プロセスの protocol stdin は変更しない。
+- Scope: Git credential helper、GPG、pinentry、pass、TTY、標準入力
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1519--cache-切れ-pinentry-の再計画`

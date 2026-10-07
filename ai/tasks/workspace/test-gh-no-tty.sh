@@ -77,6 +77,16 @@ credential_tty_log="$tmp_dir/credential-tty.log"
 script -q -e -c "printf 'protocol=https\\nhost=github.com\\n\\n' | env -u GH_TOKEN PATH='$tty_path' TEST_LOG='$credential_tty_log' PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=success '$target' auth git-credential" /dev/null >"$tmp_dir/credential-tty.out"
 assert_contains '--trust-model always' "$credential_tty_log"
 assert_contains 'GPG_TTY=/dev/pts/' "$credential_tty_log"
+assert_contains 'PASS_STDIN=tty' "$credential_tty_log"
 assert_contains 'password=fake-token' "$tmp_dir/credential-tty.out"
+
+credential_failure_log="$tmp_dir/credential-failure.log"
+if script -q -e -c "printf 'protocol=https\\nhost=github.com\\n\\n' | env -u GH_TOKEN PATH='$tty_path' TEST_LOG='$credential_failure_log' PASS_RESULT=failure '$target' auth git-credential" /dev/null >"$tmp_dir/credential-failure.out" 2>"$tmp_dir/credential-failure.err"; then
+    echo 'expected git credential decryption failure' >&2
+    exit 1
+fi
+assert_contains 'gh: github/cli-token を復号できませんでした' "$tmp_dir/credential-failure.out"
+assert_not_contains '未設定です。これから登録します' "$tmp_dir/credential-failure.out"
+assert_contains 'PASS_STDIN=tty' "$credential_failure_log"
 
 echo 'gh no-tty authentication tests passed'

@@ -3,6 +3,11 @@ set -eu
 
 printf '%s\n' "${PASSWORD_STORE_GPG_OPTS-unset}" >> "$TEST_LOG"
 printf 'GPG_TTY=%s\n' "${GPG_TTY-unset}" >> "$TEST_LOG"
+if [ -t 0 ]; then
+    echo 'PASS_STDIN=tty' >> "$TEST_LOG"
+else
+    echo 'PASS_STDIN=not-a-tty' >> "$TEST_LOG"
+fi
 
 if [ "${PASS_RESULT:-success}" = "failure" ]; then
     echo 'fake pass failure' >&2
