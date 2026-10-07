@@ -327,8 +327,21 @@ codex-gh-mcp: python3 codex-config gh
 
 .PHONY: codex-settings
 codex-settings:
-	mkdir -p ~/.codex
-	ln -sf "$$HOME/dotfiles/config/codex/AGENTS.md" $$HOME/.codex
+	mkdir -p "$$HOME/.codex/skills" "$$HOME/.codex/bin"
+	ln -sf "$$HOME/dotfiles/config/codex/AGENTS.md" "$$HOME/.codex/AGENTS.md"
+	ln -sfn "$$HOME/dotfiles/config/codex/skills/lesson" "$$HOME/.codex/skills/lesson"
+	ln -sf "$$HOME/dotfiles/config/codex/bin/codex-lesson" "$$HOME/.codex/bin/codex-lesson"
+
+.PHONY: codex-lesson
+codex-lesson: python3 codex-settings ## Codex lesson のローカル検索環境を導入
+	@LESSON_HOME="$$HOME/.codex/lesson"; \
+	if [ ! -x "$$LESSON_HOME/.venv/bin/python" ]; then \
+		mkdir -p "$$LESSON_HOME"; \
+		$(CODEX_GH_MCP_PYTHON3) -m venv "$$LESSON_HOME/.venv"; \
+	fi; \
+	"$$LESSON_HOME/.venv/bin/python" -m pip install --upgrade pip sqlite-vec sentence-transformers; \
+	HF_HOME="$$LESSON_HOME/huggingface" "$$LESSON_HOME/.venv/bin/python" -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("intfloat/multilingual-e5-small")'; \
+	"$$HOME/.codex/bin/codex-lesson" check
 
 #---------------------------------------------------------------------------------#
 # tmux

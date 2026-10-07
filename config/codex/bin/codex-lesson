@@ -1,0 +1,308 @@
+#!/usr/bin/env python3
+"""Maintain project-local lessons and their optional SQLite vector index."""
+
+from __future__ import annotations
+
+import argparse
+import json
+import os
+import re
+import shutil
+import sqlite3
+import struct
+import sys
+import uuid
+from dataclasses import dataclass
+from pathlib import Path
+
+
+VENV_PYTHON = Path.home() / ".codex" / "lesson" / ".venv" / "bin" / "python"
+MODEL_NAME = "intfloat/multilingual-e5-small"
+EMBEDDING_DIMENSIONS = 384
+
+
+def use_lesson_venv() -> None:
+    if not VENV_PYTHON.is_file():
+        return
+    if Path(sys.executable).resolve() == VENV_PYTHON.resolve():
+        return
+    os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]])
+
+
+@dataclass(frozen=True)
+class Lesson:
+    identifier: str
+    title: str
+    rule: str
+    scope: str
+    review: str
+
+
+def ai_base(path: str | None) -> Path:
+    return Path(path or os.environ.get("AI_BASE_DIR", "ai"))
+
+
+def lesson_paths(base: Path) -> tuple[Path, Path, Path]:
+    tasks = base / "tasks"
+    return tasks / "lessons.md", tasks / "lessons-legacy.md", tasks / "lessons.sqlite"
+
+
+def has_new_format(path: Path) -> bool:
+    return path.is_file() and "- ID: `" in path.read_text(encoding="utf-8")
+
+
+def parse_lessons(path: Path) -> list[Lesson]:
+    if not path.is_file():
+        return []
+    content = path.read_text(encoding="utf-8")
+    entries = re.split(r"(?m)^## ", content)[1:]
+    lessons: list[Lesson] = []
+    for entry in entries:
+        lines = entry.splitlines()
+        if not lines:
+            continue
+        title = lines[0].strip()
+        fields = {}
+        for line in lines[1:]:
+            matched = re.match(r"^- (ID|Rule|Scope|Review):\s*(.*)$", line)
+            if matched:
+                fields[matched.group(1)] = matched.group(2).strip().strip("`")
+        if set(fields) != {"ID", "Rule", "Scope", "Review"}:
+            raise ValueError(f"invalid lesson entry: {title}")
+        lessons.append(
+            Lesson(fields["ID"], title, fields["Rule"], fields["Scope"], fields["Review"])
+        )
+    return lessons
+
+
+def markdown_entry(lesson: Lesson) -> str:
+    return (
+        f"\n## {lesson.title}\n\n"
+        f"- ID: `{lesson.identifier}`\n"
+        f"- Rule: {lesson.rule}\n"
+        f"- Scope: {lesson.scope}\n"
+        f"- Review: `{lesson.review}`\n"
+    )
+
+
+def write_lesson(path: Path, lesson: Lesson) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if not path.exists():
+        path.write_text("# Lessons\n", encoding="utf-8")
+    if not has_new_format(path) and path.read_text(encoding="utf-8").strip() != "# Lessons":
+        raise ValueError(f"{path} is legacy format; run migrate-init before adding lessons")
+    path.write_text(path.read_text(encoding="utf-8").rstrip() + markdown_entry(lesson), encoding="utf-8")
+
+
+def dependency_status(load_model: bool = False) -> tuple[bool, str]:
+    try:
+        import sqlite_vec  # noqa: F401
+        from sentence_transformers import SentenceTransformer
+
+        connection = sqlite3.connect(":memory:")
+        connection.enable_load_extension(True)
+        sqlite_vec.load(connection)
+        connection.enable_load_extension(False)
+        connection.execute("select vec_version()").fetchone()
+        connection.close()
+        if load_model:
+            os.environ.setdefault("HF_HOME", str(Path.home() / ".codex" / "lesson" / "huggingface"))
+            SentenceTransformer(MODEL_NAME, local_files_only=True)
+    except Exception as error:  # dependency probes must leave Markdown mode usable
+        return False, str(error)
+    return True, "available"
+
+
+def embedding_model():
+    os.environ.setdefault("HF_HOME", str(Path.home() / ".codex" / "lesson" / "huggingface"))
+    from sentence_transformers import SentenceTransformer
+
+    return SentenceTransformer(MODEL_NAME, local_files_only=True)
+
+
+def vector_text(lesson: Lesson) -> str:
+    return f"Rule: {lesson.rule}\nScope: {lesson.scope}"
+
+
+def serialize_f32(vector: list[float]) -> bytes:
+    return struct.pack(f"{len(vector)}f", *vector)
+
+
+def sync_index(base: Path) -> None:
+    available, reason = dependency_status(load_model=True)
+    if not available:
+        raise RuntimeError(f"vector dependencies are unavailable: {reason}")
+    lessons_path, _, database_path = lesson_paths(base)
+    lessons = parse_lessons(lessons_path)
+    model = embedding_model()
+    vectors = model.encode([vector_text(lesson) for lesson in lessons], normalize_embeddings=True).tolist()
+
+    database_path.parent.mkdir(parents=True, exist_ok=True)
+    connection = sqlite3.connect(database_path)
+    try:
+        import sqlite_vec
+
+        connection.enable_load_extension(True)
+        sqlite_vec.load(connection)
+        connection.enable_load_extension(False)
+        with connection:
+            connection.execute("DROP TABLE IF EXISTS lesson_vectors")
+            connection.execute("DROP TABLE IF EXISTS lesson_records")
+            connection.execute(
+                """
+                CREATE TABLE lesson_records (
+                  id TEXT PRIMARY KEY,
+                  title TEXT NOT NULL,
+                  rule TEXT NOT NULL,
+                  scope TEXT NOT NULL,
+                  review TEXT NOT NULL
+                )
+                """
+            )
+            connection.execute(
+                f"CREATE VIRTUAL TABLE lesson_vectors USING vec0(embedding float[{EMBEDDING_DIMENSIONS}])"
+            )
+            for lesson, vector in zip(lessons, vectors, strict=True):
+                cursor = connection.execute(
+                    "INSERT INTO lesson_records (id, title, rule, scope, review) VALUES (?, ?, ?, ?, ?)",
+                    (lesson.identifier, lesson.title, lesson.rule, lesson.scope, lesson.review),
+                )
+                connection.execute(
+                    "INSERT INTO lesson_vectors (rowid, embedding) VALUES (?, ?)",
+                    (cursor.lastrowid, serialize_f32(vector)),
+                )
+    finally:
+        connection.close()
+
+
+def command_check(arguments: argparse.Namespace) -> int:
+    base = ai_base(arguments.ai_base)
+    lessons, legacy, database = lesson_paths(base)
+    available, reason = dependency_status(load_model=True)
+    print(
+        json.dumps(
+            {
+                "markdown": str(lessons),
+                "legacy_markdown": str(legacy),
+                "database": str(database),
+                "vector_available": available,
+                "reason": reason,
+            },
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+def command_add(arguments: argparse.Namespace) -> int:
+    base = ai_base(arguments.ai_base)
+    lesson = Lesson(
+        identifier=str(uuid.uuid4()),
+        title=arguments.title,
+        rule=arguments.rule,
+        scope=arguments.scope or "",
+        review=arguments.review,
+    )
+    lessons, _, _ = lesson_paths(base)
+    write_lesson(lessons, lesson)
+    available, _ = dependency_status(load_model=True)
+    if available:
+        sync_index(base)
+        indexed = True
+    else:
+        indexed = False
+    print(json.dumps({"id": lesson.identifier, "indexed": indexed}, ensure_ascii=False))
+    return 0
+
+
+def command_search(arguments: argparse.Namespace) -> int:
+    base = ai_base(arguments.ai_base)
+    available, reason = dependency_status(load_model=True)
+    if not available:
+        print(f"vector search unavailable: {reason}", file=sys.stderr)
+        return 2
+    _, _, database_path = lesson_paths(base)
+    if not database_path.is_file():
+        print("vector index is not initialized", file=sys.stderr)
+        return 2
+    model = embedding_model()
+    query = model.encode([arguments.query], normalize_embeddings=True).tolist()[0]
+    connection = sqlite3.connect(database_path)
+    try:
+        import sqlite_vec
+
+        connection.enable_load_extension(True)
+        sqlite_vec.load(connection)
+        connection.enable_load_extension(False)
+        rows = connection.execute(
+            """
+            SELECT lesson_records.id, lesson_records.title, lesson_records.rule,
+                   lesson_records.scope, lesson_records.review, lesson_vectors.distance
+            FROM lesson_vectors
+            JOIN lesson_records ON lesson_records.rowid = lesson_vectors.rowid
+            WHERE lesson_vectors.embedding MATCH ?
+            ORDER BY lesson_vectors.distance
+            LIMIT 5
+            """,
+            (serialize_f32(query),),
+        ).fetchall()
+    finally:
+        connection.close()
+    print(
+        json.dumps(
+            [
+                {"id": row[0], "title": row[1], "rule": row[2], "scope": row[3], "review": row[4], "distance": row[5]}
+                for row in rows
+            ],
+            ensure_ascii=False,
+        )
+    )
+    return 0
+
+
+def command_migrate_init(arguments: argparse.Namespace) -> int:
+    base = ai_base(arguments.ai_base)
+    lessons, legacy, _ = lesson_paths(base)
+    if legacy.exists():
+        raise ValueError(f"{legacy} already exists; refusing to overwrite legacy lessons")
+    if lessons.exists():
+        shutil.move(lessons, legacy)
+    lessons.parent.mkdir(parents=True, exist_ok=True)
+    lessons.write_text("# Lessons\n", encoding="utf-8")
+    print(json.dumps({"legacy": str(legacy), "markdown": str(lessons)}, ensure_ascii=False))
+    return 0
+
+
+def parser() -> argparse.ArgumentParser:
+    argument_parser = argparse.ArgumentParser(description=__doc__)
+    argument_parser.add_argument("--ai-base", help="AI_BASE_DIR (defaults to $AI_BASE_DIR or ai)")
+    commands = argument_parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("check")
+    add = commands.add_parser("add")
+    add.add_argument("--title", required=True)
+    add.add_argument("--rule", required=True)
+    add.add_argument("--scope")
+    add.add_argument("--review", required=True)
+    search = commands.add_parser("search")
+    search.add_argument("--query", required=True)
+    commands.add_parser("migrate-init")
+    return argument_parser
+
+
+def main() -> int:
+    use_lesson_venv()
+    arguments = parser().parse_args()
+    try:
+        return {
+            "check": command_check,
+            "add": command_add,
+            "search": command_search,
+            "migrate-init": command_migrate_init,
+        }[arguments.command](arguments)
+    except (OSError, RuntimeError, ValueError, sqlite3.Error) as error:
+        print(f"codex-lesson: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
