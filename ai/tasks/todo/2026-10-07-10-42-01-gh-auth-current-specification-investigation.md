@@ -22,6 +22,28 @@
 - 未確定事項: なし。`pass` 1.7.4 が `PASSWORD_STORE_GPG_OPTS` を GPG 起動オプションとして受け入れること、GnuPG 2.4.8 が `--pinentry-mode error` を提供することを確認済み。
 - ユーザー確認: 2026-10-07 に、`--batch --pinentry-mode error` を用いて Codex/no-tty 内の pinentry 起動を抑止し、gpg-agent キャッシュだけを利用する方針を合意。
 
+### 2026-10-07 10:42 : Codex sandbox の gpg-agent 接続許可
+- 目的: Codex sandbox から共有 gpg-agent のキャッシュを利用可能にし、no-tty ではキャッシュ切れだけを安全に失敗させる。
+- 変更対象候補: user-level Codex `config.toml` と、それを生成する `Makefile` の `codex-config`。
+- 非変更対象: `bin/gh` の token 保存先、`GH_TOKEN` の Codex への継承、gpg-agent socket の場所、GitHub token。
+- 入出力: `sandbox_workspace_write.writable_roots` へ `~/.gnupg` を追加することで、GPG の lock file 作成を許可し、同一 agent socket を使う no-tty `pass show` がキャッシュ済みなら成功する。
+- 運用方法: 対話端末でキャッシュを温め、Codex は no-prompt GPG option で復号する。キャッシュ切れ時は pinentry を起動せず既存の案内で失敗する。
+- 失敗時挙動: config の変更が効かない、または GPG 復号に失敗した場合は token を出力せず既存のエラーで終了する。
+- 既存機能への影響: Codex の全 subprocess に `~/.gnupg` への書込みを許可する。GPG config・keyring・agent 関連ファイルを変更し得るため、信頼できるリポジトリでの Codex 起動に限定する必要がある。
+- 未確定事項: active config が `Makefile` の生成物か、変更後に Codex の再起動以外の反映手順が必要か。
+- ユーザー確認が必要な項目: `~/.gnupg` 全体を Codex sandbox の writable root に追加することの承認。
+
+### 2026-10-07 10:42 : Codex launcher での GitHub token 継承
+- 目的: `bin/codex-with-gh` が sandbox 外かつ TTY のある段階で GitHub token を復号し、Codex 内の `gh` が `pass + gpg` を実行せず利用できるようにする。
+- 変更対象: `bin/codex-with-gh` と、token を使わない fixture 検証スクリプト。
+- 非変更対象: `bin/gh` の token 保存方法・通常実行時の復号、Codex sandbox の writable roots、`~/.gnupg`、GitHub token の権限・値。
+- 入出力: 入力は `pass show github/cli-token` の先頭行と任意の Codex 引数。出力はその値を `GH_TOKEN` として環境に持つ `codex "$@"` の実行であり、token は stdout・stderr・引数に出さない。
+- 運用方法: `codex-with-gh` は既存の `gh --ensure-auth` により初回登録・対話認証導線を維持した後、token を取得して `GH_TOKEN="$token" exec codex "$@"` を実行する。
+- 失敗時挙動: token 取得が失敗・空値の場合は Codex を起動せず、token を含まないエラーを stderr に出して非 0 終了する。
+- 既存機能への影響: Codex とその sandbox 内の子プロセスは `GH_TOKEN` を読める。`.gnupg` への書込み許可は追加しない。
+- 未確定事項: なし。OpenAI Docs の `shell_environment_policy.ignore_default_excludes` は既定で token 名を含む環境変数を保持するとしている。実装後は fake token を使い、実 Codex sandbox で `GH_TOKEN` の有無だけを検証する。
+- ユーザー確認: 2026-10-07 に、`GH_TOKEN="$token" exec codex "$@"` で launcher から Codex へ限定継承する方針を合意。
+
 ## Plan
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
@@ -42,6 +64,14 @@
 - 変更理由: token の存在確認は stdout/stderr を `/dev/null` にリダイレクトしているため、`show_token()` の内部で TTY を判定すると、元の起動が対話端末でも no-tty と誤判定する。これは対話時の pinentry 利用を維持する HLD に反する。
 - 変更内容: `bin/gh` 起動直後に stdin/stderr の TTY 有無を一度だけ記録し、`show_token()` はその記録値で通常 GPG と no-prompt GPG を分岐する。fixture の疑似 TTY 実行では実システムの `PATH` を保持する。
 - 変更なし: no-tty 時の `--batch --pinentry-mode error` 強制、token 非出力、Codex への `GH_TOKEN` 非継承。
+
+### 2026-10-07 10:42 : Codex launcher での GitHub token 継承
+- [x] OpenAI Docs の環境変数継承設定と、`GH_TOKEN` を Codex に渡す方針を確認する。
+- [x] HLD の目的・token の露出範囲・失敗時挙動を合意する。
+- [x] `bin/codex-with-gh` で既存の対話認証完了後に token を取得・検証し、`GH_TOKEN="$token" exec codex "$@"` を実装する。
+- [x] fake `gh` / `pass` / `codex` で、token が Codex の環境にだけ渡ること、引数が保持されること、token 取得失敗時には Codex を起動しないこと、token が出力されないことを検証する。
+- [ ] fake `GH_TOKEN` を使い、実 Codex sandbox で token 値を出力せず環境変数が設定されていることを検証する（実行中 sandbox 内での nested sandbox 作成が app-server socket directory 権限エラーで失敗したため、実機 launcher で確認が必要）。
+- [x] `sh -n`、`git diff --check`、`git diff master --check` を実行し、Review に修正内容と検証結果を記録する。
 
 ## Review
 
@@ -64,3 +94,23 @@
 - 検証: `bash -n bin/gh`、`sh -n ai/tasks/workspace/gh-no-tty-test-bin/pass`、`sh -n ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-gh-no-tty.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は `GH_TOKEN` をコマンドごとに unset し、fake `pass` により no-tty の option 付与・token 非出力・失敗時の内部エラー非表示、および疑似 TTY での option 非付与を確認した。通常の `gh` 経路も、ネットワーク不要の `/usr/bin/gh --version` で token を 2 回読出すことを確認した。実 token・実 `pass show` は実行していない。
 - 実機 no-tty 確認: `bin/gh --ensure-auth` は exit 1 となり、token を stdout に出さず、pinentry-curses を表示せず、別の対話端末で `pass show github/cli-token >/dev/null` を実行する案内だけを stderr に出した。これはキャッシュ未利用時の想定された失敗挙動である。対話端末で GPG 認証後に同じ Codex session から成功する確認は、実 token を持つ対話端末での操作が必要なため未実施。
 - lesson 最終確認: `codex-lesson --ai-base ai check` は vector 検索不可（`sqlite_vec` 未導入）だったため、`ai/tasks/lessons.md` の GPG・認証・秘密出力関連 Rule を照合した。今回の実装・検証は適用対象の Rule に従っている。
+
+### 2026-10-07 10:42 : gpg-agent キャッシュ共有失敗の再調査
+- 再現報告: 別環境で、対話 TTY 側では GPG agent のキャッシュが有効にもかかわらず、Codex 側の `gh` は「非対話では復元できない」と失敗した。
+- 訂正: no-tty の pinentry 起動を抑止するだけでは、対話端末と Codex が同一の gpg-agent socket に接続できること、または Codex sandbox で GPG が必要な lock file を作成できることを保証しない。
+- 次の一次情報: token 本文を stdout に出さず、TTY 側・Codex 側の `gpgconf --list-dirs agent-socket`、`GNUPGHOME`、および no-prompt `pass show` の stderr と終了コードを比較する。
+- 原因確定: TTY 側・Codex 側とも `GNUPGHOME=/home/user/.gnupg`、agent socket は `/run/user/1000/gnupg/S.gpg-agent` だった。TTY 側は `--batch --pinentry-mode error` で exit 0 のため agent キャッシュも有効である。Codex 側は `~/.gnupg/.#lk...` を read-only で作成できず、agent 接続に失敗して exit 2 となった。
+- 追加検証: `--lock-never` は GnuPG 2.4.8 の正式 option であり、lock file の作成は抑止できた。しかし Codex sandbox では既存 agent への接続に失敗し、`gpg-agent` の起動を試みて General error になった。lock file だけを止めても復号できない。
+- 対応判断: `~/.gnupg` を writable root にする案は、読み取り目的に対して書込み権限が広すぎるため採用しない。token も GPG home も sandbox に渡さないなら、GitHub 操作は sandbox 外の認証済みプロセスへ委譲する必要がある。
+
+### 2026-10-07 10:42 : Codex launcher での GitHub token 継承
+- 原因: Codex sandbox 内の GPG は `~/.gnupg` が read-only のため、共有 gpg-agent キャッシュが有効でも復号できない。`.gnupg` への書込み許可は権限が広すぎる。
+- 修正内容: `bin/codex-with-gh` は既存の `gh --ensure-auth` を通して対話認証・初回登録の導線を維持した後、`pass show github/cli-token` の先頭行を取得・検証する。成功時は `GH_TOKEN="$token" exec codex "$@"` で Codex プロセスにだけ token を渡す。`pass` 不在、復号失敗、空値では Codex を起動しない。
+- セキュリティ: token は標準出力・標準エラー・コマンド引数に出さない。Codex とその子プロセスは `GH_TOKEN` を読めるため、信頼できるリポジトリでの起動と、最小権限・短命の token を前提にする。`.gnupg` の writable root は追加しない。
+- 検証: fake `gh` / `pass` / `codex` で、起動前の `gh` と `pass` には `GH_TOKEN` がなく、Codex にだけ token が渡ること、引数が保持されること、`pass` と `gh --ensure-auth` の各失敗時に Codex が起動しないこと、成功・失敗時とも token が stdout/stderr に出ないことを確認した。`sh -n bin/gh`、`sh -n bin/codex-with-gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。
+- 実機 sandbox 検証: fake `GH_TOKEN` を用いた `codex sandbox` は、実行中の sandbox 内で nested sandbox を作る際に `app-server socket directory must be a user-owned directory with mode 0700` で失敗した。token の値は出力されなかった。実機の `codex-with-gh` 起動後に、値を表示しない `test -n "$GH_TOKEN"` で最終確認が必要である。
+- lesson 最終確認: `codex-lesson --ai-base ai check` は vector 検索不可（`sqlite_vec` 未導入）だったため、`ai/tasks/lessons.md` の認証・secret 出力・GPG cache 共有関連 Rule を照合した。実装と fixture は適用対象の Rule に従っている。
+
+### 2026-10-07 10:42 : Codex sandbox 内の GPG 復号に関する lesson
+- ユーザー指摘: Codex CLI 内では GPG 復号を安全に行えない点を lesson として残す。
+- 根拠: `workspace-write` sandbox 内では `~/.gnupg` が read-only で、共有 gpg-agent socket のキャッシュが有効でも GPG が必要とする lock file・状態管理に失敗した。これを回避するため `.gnupg` 全体を書込み可能にすると、読み取り目的に対して権限が広すぎる。

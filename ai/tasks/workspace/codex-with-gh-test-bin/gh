@@ -1,0 +1,10 @@
+#!/bin/sh
+set -eu
+
+printf '%s\n' "${GH_TOKEN-unset}" > "$TEST_DIR/gh-token"
+printf '%s\n' "$@" > "$TEST_DIR/gh-args"
+
+if [ "${FAKE_GH_RESULT:-success}" = 'failure' ]; then
+    echo 'fake gh authentication failure' >&2
+    exit 1
+fi

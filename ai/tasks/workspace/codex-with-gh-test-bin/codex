@@ -1,0 +1,5 @@
+#!/bin/sh
+set -eu
+
+printf '%s\n' "${GH_TOKEN-unset}" > "$TEST_DIR/codex-token"
+printf '%s\n' "$@" > "$TEST_DIR/codex-args"

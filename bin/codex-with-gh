@@ -9,4 +9,21 @@ if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
 fi
 
 gh --ensure-auth >/dev/null
-exec codex "$@"
+
+if ! command -v pass >/dev/null 2>&1; then
+    echo 'codex-with-gh: pass コマンドが必要です。インストールしてください' >&2
+    exit 127
+fi
+
+if ! token="$(pass show github/cli-token)"; then
+    echo 'codex-with-gh: GitHub token を復号できませんでした' >&2
+    exit 1
+fi
+
+token="$(printf '%s\n' "$token" | head -n 1)"
+if [ -z "$token" ]; then
+    echo 'codex-with-gh: GitHub token を取得できませんでした' >&2
+    exit 1
+fi
+
+GH_TOKEN="$token" exec codex "$@"

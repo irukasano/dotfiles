@@ -125,3 +125,15 @@
 - Rule: no-tty 実行で認証キャッシュの状態を調べるときは、キャッシュ切れ時に pinentry や対話 UI を起動しないことを明示的に保証し、単なる復号試行の成否を判定に使わない。
 - Scope: CLIラッパー、GPG、pinentry、no-tty、認証
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--no-tty-での-pinentry-起動リスク訂正`
+## GPG キャッシュ共有は agent 接続可能性を確認する
+
+- ID: `63b0466c-0708-4f0a-adaa-719ac29b0e72`
+- Rule: 対話端末と no-tty sandbox 間で GPG agent キャッシュの共有を前提にするときは、キャッシュ有無だけで成功を判断せず、両環境の agent socket 到達性と GPG の必要なファイル書込み可否を一次情報で確認する。
+- Scope: GPG、gpg-agent、sandbox、no-tty、認証
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--gpg-agent-キャッシュ共有失敗の再調査`
+## Codex sandbox 内で pass と GPG の復号を前提にしない
+
+- ID: `516ecaff-b0d4-4f73-8a02-9435f644346e`
+- Rule: Codex CLI の workspace-write sandbox で認証情報を利用する設計では、pass と GPG による sandbox 内の復号を前提にしない。GPG の agent 接続や lock file・状態管理はホームディレクトリへの書込みを要し、書込み許可で回避すると秘密鍵領域への権限を広げすぎる。復号は sandbox 外の信頼境界で完了し、必要な認証情報の受け渡し範囲を明示的に限定する。
+- Scope: Codex CLI、workspace-write sandbox、GPG、pass、認証情報、権限境界
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--codex-sandbox-内の-gpg-復号に関する-lesson`
