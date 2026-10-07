@@ -155,15 +155,33 @@
 - Rule: ネットワーク制限下の CLI が token invalid と表示しても、認証失敗と断定しない。認証ヘッダーを伏せた API 呼出しの HTTP 応答などで、通信失敗と credential 失効を分けて確認する。
 - Scope: 認証、GitHub CLI、Codex sandbox、ネットワーク制限、環境変数
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1211--token-同一性の確認`
-## credential helperのTTYはGPG入出力まで切り替える
+## credential helperのGPG入出力は実機で検証する
 
 - ID: `21fe64d7-3b43-41d8-ad03-63fbce55697b`
-- Rule: Git credential helper のように標準入力がプロトコル用 pipe で占有される経路で対話的な GPG 復号を行う場合、GPG_TTY の設定だけでなく、復号処理の子プロセスだけの stdin を制御端末へ切り替える。親プロセスの protocol stdin は変更しない。
+- Rule: Git credential helper のように標準入力がプロトコル用 pipe で占有される経路で対話的な GPG 復号を試みる場合、GPG_TTY 設定や子プロセス stdin の切替だけで pinentry が利用可能とは判断しない。cache を消した実際の helper 経路で検証する。
 - Scope: Git credential helper、GPG、pinentry、pass、TTY、標準入力
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1519--cache-切れ-pinentry-の再計画`
-## pinentry経路のstderrを捨てない
+## pinentry診断ではstderrを保持する
 
 - ID: `94e7154b-40b5-4788-8846-5631e8f4d7a2`
-- Rule: pinentry を起動し得る GPG 復号経路では、存在確認のために stderr を無条件に破棄しない。secret の stdout は command substitution 等で閉じ、pinentry/GPG の対話用 stderr は制御端末へ残す。
+- Rule: pinentry を起動し得る GPG 復号経路を診断するときは、存在確認のために stderr を無条件に破棄しない。secret の stdout は command substitution 等で閉じ、GPG の実際の失敗原因を stderr から確認する。stderr を保持しても pinentry の terminal 可用性は別途検証する。
 - Scope: GPG、pinentry、pass、Git credential helper、TTY、標準エラー、認証
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1527--pinentry-stderr-の再計画`
+## 単独復号成功をhelper内pinentry可用性の根拠にしない
+
+- ID: `35c9dd80-4fe0-418f-a96e-37dd80abfe59`
+- Rule: 標準入力やプロセスグループが異なる credential helper 内で GPG/pinentry を使う設計では、単独の pass 復号成功から helper 内の pinentry 可用性を推論しない。cache を消した実際の helper 経路で terminal 取得を確認する。
+- Scope: Git credential helper、GPG、pinentry、pass、TTY、認証
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1533--credential-helper-内-pinentry-の-tty-取得失敗`
+## 非対話認証の成功をcacheなしの対話成功と混同しない
+
+- ID: `90561c2b-1c8f-463c-b8a8-e2fcbfaa4294`
+- Rule: no-TTY の認証経路が成功していても、GPG agent cache による復号と cache 切れ時の pinentry 対話を区別する。cache-only の既存挙動を対話復号へ拡張する前に、cache を消した実行で検証する。
+- Scope: GPG、gpg-agent、pinentry、Git credential helper、no-TTY、認証
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1537--修正前-credential-helper-の-cache-only-挙動`
+## 認証回帰では既知の正常commitを実装単位で比較する
+
+- ID: `49eb781e-2dcf-443d-aa5b-83716e8eadeb`
+- Rule: 認証フローの回帰報告では、直近変更だけから原因を推測しない。ユーザーが示す既知の正常 commit の実装を現行と比較し、同じ実行経路の差分を特定してから修正範囲を決める。
+- Scope: 認証、Git履歴、CLIラッパー、Git credential helper、GPG
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1537--10b917c-の-credential-helper-互換復元`

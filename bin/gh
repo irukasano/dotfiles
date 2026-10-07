@@ -3,21 +3,18 @@ set -eu
 
 token_name='github/cli-token'
 has_tty=0
-credential_tty=''
+is_git_credential=0
 
 if [ -t 0 ] && [ -t 2 ]; then
     has_tty=1
 fi
 
-if [ "${1:-}" = "auth" ] && [ "${2:-}" = "git-credential" ] && \
-    [ -r /dev/tty ] && [ -w /dev/tty ]; then
-    credential_tty=$(tty 2>/dev/null </dev/tty || true)
+if [ "${1:-}" = "auth" ] && [ "${2:-}" = "git-credential" ]; then
+    is_git_credential=1
 fi
 
 set_gpg_tty() {
-    if [ -n "$credential_tty" ]; then
-        export GPG_TTY="$credential_tty"
-    elif [ -t 0 ] && command -v tty >/dev/null 2>&1; then
+    if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
         current_tty=$(tty 2>/dev/null || true)
         if [ -n "${current_tty:-}" ] && [ "$current_tty" != "not a tty" ]; then
             export GPG_TTY="$current_tty"
@@ -29,14 +26,6 @@ ensure_pass() {
     if ! command -v pass >/dev/null 2>&1; then
         echo "gh: pass コマンドが必要です。インストールしてください" >&2
         exit 127
-    fi
-}
-
-show_token() {
-    if [ -n "$credential_tty" ]; then
-        pass show "$token_name" </dev/tty
-    else
-        pass show "$token_name"
     fi
 }
 
@@ -96,7 +85,7 @@ if [ -n "${GH_TOKEN:-}" ]; then
     exec /usr/bin/gh "$@"
 fi
 
-if [ "$has_tty" -ne 1 ] && [ -z "$credential_tty" ]; then
+if [ "$has_tty" -ne 1 ] && [ "$is_git_credential" -ne 1 ]; then
     echo 'gh: 非対話では GH_TOKEN を設定してください' >&2
     exit 1
 fi
@@ -104,21 +93,17 @@ fi
 ensure_pass
 set_gpg_tty
 
-if [ -n "$credential_tty" ]; then
-    if ! token="$(show_token)"; then
-        echo "gh: $token_name を復号できませんでした" >&2
+if ! pass show "$token_name" >/dev/null 2>&1; then
+    if [ "$has_tty" -ne 1 ]; then
+        echo "gh: $token_name を非対話では復元できません。先に 'gh --ensure-auth' または 'gh auth update-token' を実行してください" >&2
         exit 1
     fi
-else
-    if ! show_token >/dev/null 2>&1; then
-        echo "gh: $token_name が未設定です。これから登録します" >&2
-        update_token
-    fi
 
-    token="$(show_token)"
+    echo "gh: $token_name が未設定です。これから登録します" >&2
+    update_token
 fi
 
-token="$(printf '%s\n' "$token" | head -n 1)"
+token="$(pass show "$token_name" | head -n 1)"
 if [ -z "$token" ]; then
     echo "gh: $token_name からトークンを取得できませんでした" >&2
     exit 1

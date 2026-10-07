@@ -36,6 +36,36 @@
 - 修正: credential helper は事前の無出力確認を行わず、`pass show` を一度だけ command substitution で実行する。復号 plaintext は shell 変数内に保持され stdout に出さず、stderr は terminal へ残す。失敗時は復号エラーで終了する。
 - 非変更対象: 通常 TTY の初回登録導線、no-TTY/Codex の復号禁止、Git credential protocol、token 保存先。
 
+###### 2026-10-07 15:33 : credential helper 内 pinentry の TTY 取得失敗
+- 再現報告: `gpgconf --kill gpg-agent` と `git credential-cache exit` の後の `git pull` は、`gpg: 公開鍵の復号に失敗しました: そのようなデバイスやアドレスはありません` と表示した。Git helper は credential を返せず `Username for 'https://github.com'` にフォールバックした。
+- 訂正: pinentry stderr の破棄が根本原因だと判断したが、stderr を残した結果、credential helper 内の pinentry 自体が terminal を取得できないことが判明した。単独 `pass show` の成功を helper 内の pinentry 可用性の証明としては扱えない。
+- 次の一次情報: 対象 host の `~/.gnupg/gpg-agent.conf` にある `keep-tty` と `pinentry-program`、および `gpgconf --list-options gpg-agent` の該当設定を確認する。
+
+### 2026-10-07 15:37 : gh 認証分岐の単純化
+- 目的: GPG/pinentry を Git credential helper 内で起動する不成立な経路を撤去し、gh の認証判断を明確にする。
+- 変更対象: `bin/gh` の `auth git-credential` 向け制御端末・GPG 復号分岐、対応 fixture。
+- 非変更対象: `pass + gpg` による token 保存、Codex launcher の session 限定 `GH_TOKEN` 継承、通常 TTY での token 登録導線。
+- 認証優先順位: (1) `GH_TOKEN` が設定済みなら常に `/usr/bin/gh` を実行する。(2) `GH_TOKEN` 未設定で no-TTY（credential helper を含む）なら、`pass`、GPG、pinentry を呼ばず失敗する。(3) `GH_TOKEN` 未設定かつ通常 TTY の `gh` だけが `pass + gpg` で復号する。
+- 入出力: credential helper に `GH_TOKEN` が渡されれば既存の `/usr/bin/gh auth git-credential` が credential protocol を返す。未設定時の helper は token を返さない。
+- 失敗時挙動: credential helper が未設定 token で失敗した際に、Git の Username/Password prompt を抑止するため `quit=true` を credential protocol の stdout へ返す案。一般 no-TTY `gh` は従来どおりエラーだけを stderr に出す。
+- 既存機能への影響: 通常 terminal の `git pull` は `GH_TOKEN` を明示供給しない限り復号されず失敗する。helper 内の cache 切れ pinentry は表示されない。
+- 未確定事項: credential helper の未設定 token 時に `quit=true` を返して Git prompt を止めるか、現状どおり Git の prompt へフォールバックさせるか。
+- ユーザー確認が必要な項目: `quit=true` で Git の Username prompt を止めるか。
+
+#### 2026-10-07 15:37 : 10b917c の credential helper 互換復元
+- 目的: user が正常動作を確認していた `10b917c` の Git credential helper に限る GPG 復号経路を復元する。
+- 根拠: `10b917c` は `auth git-credential` を特別扱いせず、no-TTY でも通常の `pass show` を実行していた。helper 内で `GPG_TTY` を上書きせず、親 fish が export した terminal 値を GPG/pinentry に渡していた。`9145c7e` で全 no-TTY を `GH_TOKEN` 必須にしたことが、当時の helper 経路を削除した。
+- 変更対象: `bin/gh` の credential helper 専用 `credential_tty`、`/dev/tty` stdin、単発復号・復号失敗分岐を撤去し、`10b917c` と同じ通常 `pass show` 経路を helper にだけ適用する。
+- 非変更対象: `GH_TOKEN` 優先、一般 no-TTY の `GH_TOKEN` 必須、通常 TTY の `pass + gpg` と token 登録、Codex launcher。
+- 入出力: `auth git-credential` かつ `GH_TOKEN` 未設定なら、親環境の `GPG_TTY` を維持した `pass show` で token を取得し `/usr/bin/gh auth git-credential` へ渡す。その他 no-TTY は `pass` を呼ばずエラーにする。
+- 失敗時挙動: helper の `pass` 復号失敗は `10b917c` と同じく、no-TTY 用の復元不能メッセージで終了する。Git の Username prompt を抑止する変更はこの復元には含めない。
+- 既存機能への影響: terminal からの Git HTTPS 操作は、親 fish の `GPG_TTY` が有効なら `10b917c` と同じ挙動へ戻る。Codex 内の一般 no-TTY では GPG 復号を行わない。
+- ユーザー確認が必要な項目: `10b917c` の credential helper 経路だけを復元すること。
+
+#### 2026-10-07 15:37 : 修正前 credential helper の cache-only 挙動
+- 履歴確認: `9145c7e` より前の `bin/gh` は、credential helper を含む no-TTY で `pass show` を実行した。ただし `PASSWORD_STORE_GPG_OPTS` に `--batch --pinentry-mode error` を付与していたため、gpg-agent cache が有効なら復号でき、cache 切れでは pinentry を出さず失敗する。
+- 訂正: 修正前に helper が動いていたという観察は、GPG 復号そのものが helper 内で常に可能だったことではなく、agent cache を使えたことと整合する。今回追加した credential helper の TTY/pinentry special-case は、この既存 cache-only 経路を cache 切れの対話復号へ拡張しようとして失敗した。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 目的: 過去の gh / Codex 認証調整の内容と、現行の対話・非対話における `pass + gpg` 復号条件を説明する。
 - 変更対象: 調査・記録のみ。
@@ -116,6 +146,12 @@
 - [x] fixture で、credential helper の `pass` が TTY stdin を受けること、no-TTY では `pass` を実行しないこと、通常 TTY の登録導線が維持されることを確認する。
 - [x] 構文・fixture・差分チェックを実行し、実 terminal での cache 切れ `git pull` 確認を Review に記録する。
 
+#### 2026-10-07 15:37 : 10b917c の credential helper 互換復元
+- [x] `auth git-credential` を識別し、当該経路だけ一般 no-TTY の早期エラー対象から外す。
+- [x] helper の `/dev/tty` 操作・GPG_TTY 上書き・単発復号を撤去し、`10b917c` と同じ `pass show` 経路を使う。
+- [x] fixture で helper が親の `GPG_TTY` を維持して `pass` を実行すること、一般 no-TTY が `pass` を実行しないこと、helper の復号失敗が登録導線へ進まないことを確認する。
+- [x] 構文・fixture・差分チェックを実行し、実 terminal の `git pull` 確認を Review に記録する。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - [x] 関連スクリプト、Git 履歴、既存の認証調査記録を確認する。
 - [x] 対話・非対話・`--ensure-auth`・Codex 起動時の分岐を静的に確認する。
@@ -178,6 +214,12 @@
 - 修正内容: credential helper は無出力の事前存在確認を廃止し、`pass show` を一度だけ command substitution で実行する。token の stdout は shell 変数に閉じ、stderr は terminal に残す。失敗時は復号エラーを返し、登録導線に進まない。
 - 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。credential helper の fixture は成功・復号失敗の双方で `pass` を一度だけ実行し、TTY stdin を受けることを確認した。
 - 実機確認: `gpgconf --kill gpg-agent` と `git credential-cache exit` の後に terminal の `git pull` を実行し、pinentry 表示と Git 操作の継続を確認する必要がある。
+
+### 2026-10-07 15:37 : 10b917c の credential helper 互換復元
+- 原因: `9145c7e` が一般 no-TTY の GPG 復号を止めたことで、過去に機能していた Git credential helper の `pass show` 経路も同時に失われた。後続の `/dev/tty` / GPG_TTY 上書きによる pinentry 起動拡張は、実機で `ENXIO` となり不成立だった。
+- 修正内容: `auth git-credential` を識別し、`GH_TOKEN` 未設定でも `10b917c` と同じ通常の `pass show` 経路を使う。helper の `/dev/tty` stdin 操作、GPG_TTY 上書き、単発復号分岐を撤去した。親 fish が export した `GPG_TTY` は変更しない。その他の no-TTY 呼出しは、従来どおり `GH_TOKEN` 未設定で `pass` を呼ばず終了する。
+- 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は helper が親 `GPG_TTY` を維持して `pass` を呼び credential protocol を返すこと、helper の復号失敗が登録導線へ進まないこと、一般 no-TTY が `pass` を呼ばないことを確認した。
+- 実機確認: 対象 terminal の fish が `GPG_TTY` を export している状態で、`git pull` を実行して過去と同じ helper 経路が動作することを確認する必要がある。
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 該当履歴: 2026-04-07 の `62806b1`（`Codex用のGH認証とGPG設定を整備`）で、`pinentry-curses` と `GPG_TTY` を整備し、非対話時は `pass insert` を起動せず、事前の `gh --ensure-auth` を促す仕様になった。2026-04-09 の `8c356c5` は token 更新用の `gh auth update-token` を追加した変更である。
