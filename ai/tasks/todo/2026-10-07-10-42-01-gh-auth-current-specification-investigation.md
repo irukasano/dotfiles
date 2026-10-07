@@ -220,6 +220,7 @@
 - 修正内容: `auth git-credential` を識別し、`GH_TOKEN` 未設定でも `10b917c` と同じ通常の `pass show` 経路を使う。helper の `/dev/tty` stdin 操作、GPG_TTY 上書き、単発復号分岐を撤去した。親 fish が export した `GPG_TTY` は変更しない。その他の no-TTY 呼出しは、従来どおり `GH_TOKEN` 未設定で `pass` を呼ばず終了する。
 - 検証: `sh -n bin/gh`、fixture の構文確認、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。fixture は helper が親 `GPG_TTY` を維持して `pass` を呼び credential protocol を返すこと、helper の復号失敗が登録導線へ進まないこと、一般 no-TTY が `pass` を呼ばないことを確認した。
 - 実機確認: 対象 terminal の fish が `GPG_TTY` を export している状態で、`git pull` を実行して過去と同じ helper 経路が動作することを確認する必要がある。
+- 実機確認結果: `harutaka-datahub` の通常 terminal で、更新後の `git pull` が期待どおり動作することをユーザーが確認した。
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 該当履歴: 2026-04-07 の `62806b1`（`Codex用のGH認証とGPG設定を整備`）で、`pinentry-curses` と `GPG_TTY` を整備し、非対話時は `pass insert` を起動せず、事前の `gh --ensure-auth` を促す仕様になった。2026-04-09 の `8c356c5` は token 更新用の `gh auth update-token` を追加した変更である。
