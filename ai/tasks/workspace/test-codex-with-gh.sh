@@ -29,14 +29,19 @@ assert_not_exists() {
 
 success_dir="$tmp_dir/success"
 mkdir "$success_dir"
-env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_DIR="$success_dir" \
-    FAKE_GH_RESULT=success FAKE_PASS_RESULT=success \
-    "$target" --model test-model >"$success_dir/stdout" 2>"$success_dir/stderr"
+success_path="$fake_bin:$PATH"
+script -q -e -c "env -u GH_TOKEN PATH='$success_path' TEST_DIR='$success_dir' TMPDIR='$success_dir' LANG='ja_JP.UTF-8' UNRELATED_SECRET='must-not-pass' SSH_AUTH_SOCK='/tmp/fake-agent' FAKE_GH_RESULT=success FAKE_PASS_RESULT=success '$target' --model test-model" /dev/null >"$success_dir/stdout" 2>"$success_dir/stderr"
 assert_equals 'unset' "$success_dir/gh-token"
 assert_equals 'unset' "$success_dir/pass-token"
 assert_equals 'fixture-token' "$success_dir/codex-token"
-assert_equals '--model' "$success_dir/codex-args"
-if [ "$(sed -n '2p' "$success_dir/codex-args")" != 'test-model' ]; then
+assert_equals 'unset' "$success_dir/codex-unrelated-secret"
+assert_equals 'unset' "$success_dir/codex-ssh-auth-sock"
+assert_equals 'ja_JP.UTF-8' "$success_dir/codex-lang"
+assert_equals 'tty' "$success_dir/codex-stdin"
+assert_equals '-c' "$success_dir/codex-args"
+if [ "$(sed -n '2p' "$success_dir/codex-args")" != 'shell_environment_policy.inherit="all"' ] || \
+    [ "$(sed -n '3p' "$success_dir/codex-args")" != '--model' ] || \
+    [ "$(sed -n '4p' "$success_dir/codex-args")" != 'test-model' ]; then
     echo 'expected Codex arguments to be preserved' >&2
     exit 1
 fi

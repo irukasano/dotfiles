@@ -1,5 +1,14 @@
 #!/bin/sh
 set -eu
 
-printf '%s\n' "${GH_TOKEN-unset}" > "$TEST_DIR/codex-token"
-printf '%s\n' "$@" > "$TEST_DIR/codex-args"
+printf '%s\n' "${GH_TOKEN-unset}" > "$TMPDIR/codex-token"
+printf '%s\n' "${UNRELATED_SECRET-unset}" > "$TMPDIR/codex-unrelated-secret"
+printf '%s\n' "${SSH_AUTH_SOCK-unset}" > "$TMPDIR/codex-ssh-auth-sock"
+printf '%s\n' "${LANG-unset}" > "$TMPDIR/codex-lang"
+printf '%s\n' "$@" > "$TMPDIR/codex-args"
+
+if [ -t 0 ]; then
+    echo 'tty' > "$TMPDIR/codex-stdin"
+else
+    echo 'not-a-tty' > "$TMPDIR/codex-stdin"
+fi

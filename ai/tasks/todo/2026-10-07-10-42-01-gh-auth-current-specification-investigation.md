@@ -1,5 +1,16 @@
 ## HLD
 
+### 2026-10-07 12:02 : TTY と Codex session の token 差異診断
+- 目的: 同一 host の TTY では `gh auth status` が成功し、`codex-with-gh` 経由の Codex session では `GH_TOKEN is invalid` となる原因を、token 本文を露出せず確定する。
+- 変更対象: 診断コマンド、および原因確定後に必要なら `bin/codex-with-gh` と対応 fixture。
+- 非変更対象: `pass` store、GPG 設定、GitHub token、Codex global config。原因が確定するまで実装変更・token 更新を行わない。
+- 入出力: TTY の `pass show` 先頭行と Codex 内 `GH_TOKEN` の SHA-256（token 本文は出力しない）を比較する。
+- 運用方法: 同じ `codex-with-gh` session と通常 TTY で比較する。hash が一致すれば Codex 側の環境処理を調査し、不一致なら launcher の取得・pipe 受け渡しを調査する。
+- 失敗時挙動: `pass` 復号または hash コマンドが失敗したら、その終了状態のみを確認し、token を表示・更新しない。
+- 既存機能への影響: 診断段階ではない。
+- 未確定事項: hash が一致するか、Codex 実行時に環境変数が変換されているか。
+- ユーザー確認が必要な項目: hash 値を会話へ貼ること（値自体は token ではないが、照合用の識別子となる）。
+
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
 - 目的: 過去の gh / Codex 認証調整の内容と、現行の対話・非対話における `pass + gpg` 復号条件を説明する。
 - 変更対象: 調査・記録のみ。
@@ -55,6 +66,17 @@
 - 未確定事項: なし。
 - ユーザー確認: 2026-10-07 に、no-tty では `GH_TOKEN` を必須とし復号を行わない方針を合意。
 
+### 2026-10-07 10:42 : 最小環境での Codex session token 継承
+- 目的: GitHub token は `pass + gpg` にのみ保存し、TTY の `codex-with-gh` が復号した token を起動する Codex session にだけ渡す。
+- 変更対象候補: `bin/codex-with-gh`、同 launcher の fixture、必要なら `Makefile` の生成設定。
+- 非変更対象: `pass + gpg` の保存方式、`~/.gnupg` の sandbox 権限、GitHub CLI の credential store、global な Codex config の環境継承方針。
+- 入出力: TTY launcher が `pass show github/cli-token` の先頭行を入力に、最小化した環境で `GH_TOKEN` を持つ Codex session を出力する。Codex session 外・他 session・tmux server には token を渡さない。
+- 運用方法: launcher は起動時だけ復号し、Codex の child command には `shell_environment_policy.inherit = "all"` を一回限り指定して `GH_TOKEN` を継承させる。
+- 失敗時挙動: token 復号失敗時は Codex を起動しない。環境継承が失敗すれば `bin/gh` は no-tty の `GH_TOKEN` 未設定エラーで終了する。
+- 既存機能への影響: Codex session は `GH_TOKEN` を読める。一方で `env -i` により launcher 親の不要な環境変数・他の credential を Codex に渡さない。
+- 未確定事項: 最小環境に残す非 secret 変数の範囲。
+- ユーザー確認: 2026-10-07 に、`pass + gpg` を維持し、session 限定で `GH_TOKEN` を渡す方針を合意。
+
 ## Plan
 
 ### 2026-10-07 10:42 : gh 認証の現行仕様調査
@@ -83,6 +105,15 @@
 - [x] fake `gh` / `pass` / `codex` で、token が Codex の環境にだけ渡ること、引数が保持されること、token 取得失敗時には Codex を起動しないこと、token が出力されないことを検証する。
 - [ ] fake `GH_TOKEN` を使い、実 Codex sandbox で token 値を出力せず環境変数が設定されていることを検証する（実行中 sandbox 内での nested sandbox 作成が app-server socket directory 権限エラーで失敗したため、実機 launcher で確認が必要）。
 - [x] `sh -n`、`git diff --check`、`git diff master --check` を実行し、Review に修正内容と検証結果を記録する。
+
+### 2026-10-07 10:42 : 最小環境での Codex session token 継承
+- [x] `pass + gpg` を維持し、session 限定で `GH_TOKEN` を渡す HLD をユーザーと合意する。
+- [x] 維持する非 secret 環境変数を `HOME`、`PATH`、`USER`、`TERM`、`LANG`、`LC_*`、`TZ`、`TMPDIR`、`XDG_RUNTIME_DIR` と合意する。`SSH_AUTH_SOCK` とその他の親環境変数は渡さない。
+- [x] `bin/codex-with-gh` を Bash 化し、許可した環境変数だけで Codex を起動する。
+- [x] token を argv・stdout・stderr へ出さず pipe で child shell へ渡し、元の TTY stdin を復元して `GH_TOKEN="$token" exec codex -c 'shell_environment_policy.inherit="all"'` を実行する。
+- [x] fake `gh` / `pass` / `codex` で token・必要な環境変数・Codex config override・引数・TTY stdin の継承、不要な secret・`SSH_AUTH_SOCK` の非継承、失敗経路、token 非出力を検証する。
+- [x] 実機の tmux `Alt-p c` 起動後、Codex 内で token 値を表示せず `test -n "$GH_TOKEN"` と `gh auth status` を確認する。
+- [x] `bash -n`、fixture、`git diff --check`、`git diff master --check` を実行し、Review に記録する。
 
 ### 2026-10-07 10:42 : no-tty gh の環境 token 必須化
 - [x] HLD の no-tty 分岐・影響範囲をユーザーと合意する。
@@ -132,7 +163,33 @@
 - ユーザー指摘: Codex CLI 内では GPG 復号を安全に行えない点を lesson として残す。
 - 根拠: `workspace-write` sandbox 内では `~/.gnupg` が read-only で、共有 gpg-agent socket のキャッシュが有効でも GPG が必要とする lock file・状態管理に失敗した。これを回避するため `.gnupg` 全体を書込み可能にすると、読み取り目的に対して権限が広すぎる。
 
+### 2026-10-07 10:42 : Codex の環境継承基礎モードに関する訂正
+- ユーザー確認: tmux の `Alt-p c` で起動し、worktree の `origin` は GitHub URL、`$HOME/dotfiles/bin/codex-with-gh` は `GH_TOKEN="$token" exec codex "$@"` を含み、`~/.codex` の user/profile config に明示的な `shell_environment_policy` は存在しない。それでも Codex 内の `gh` は `GH_TOKEN` 未設定と判定した。
+- 訂正: `shell_environment_policy.ignore_default_excludes` が既定で true であっても、それだけでは token が子コマンドに継承される保証にならない。`shell_environment_policy.inherit` の基礎継承モードと合わせて検証する必要がある。
+
 ### 2026-10-07 10:42 : no-tty gh の環境 token 必須化
 - 原因: `GH_TOKEN` が未設定の no-tty 実行でも `bin/gh` が `pass show` を試すため、Codex sandbox 内で GPG 復号を試みる余地が残っていた。
 - 修正内容: `GH_TOKEN` の既存分岐直後、`pass` の存在確認・GPG TTY 設定・`pass show` より前に no-tty 判定を追加した。未設定時は `GH_TOKEN` の設定を求めて非 0 終了する。no-tty 用の GPG option 付与 helper は不要になったため、token 読出しは TTY 経路だけの通常 `pass show` にした。
 - 検証: `ai/tasks/workspace/test-gh-no-tty.sh` は、no-tty・token 未設定時に fake `pass` が呼ばれずエラーだけを返すこと、`GH_TOKEN` 設定時は fake `pass` を使わず `/usr/bin/gh --version` が成功すること、疑似 TTY では `pass` が呼ばれることを確認した。`sh -n bin/gh`、`sh -n ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功した。
+
+### 2026-10-07 10:42 : 最小環境での Codex session token 継承
+- 原因: `codex-with-gh` が `GH_TOKEN` を Codex プロセスへ渡しても、Codex の子コマンドはデフォルトの基礎環境継承で token を受け取れなかった。global config で継承を広げると、他の Codex session にも影響する。
+- 修正内容: launcher を Bash に変更し、`HOME`、`PATH`、`USER`、`TERM`、`LANG`、`LC_*`、`TZ`、`TMPDIR`、`XDG_RUNTIME_DIR` だけを新しい環境に残す。token は `env -i` の argv に置かず pipe で child shell へ渡し、child shell は元の stdin を fd 3 から復元して `GH_TOKEN="$token" exec codex -c 'shell_environment_policy.inherit="all"'` を実行する。これにより token は Codex session 内だけで継承され、global `config.toml` は変更しない。
+- 検証: `ai/tasks/workspace/test-codex-with-gh.sh` は擬似 TTY で、Codex に `GH_TOKEN`、`LANG`、`TMPDIR`、CLI config override、既存引数、TTY stdin が届くこと、`UNRELATED_SECRET` と `SSH_AUTH_SOCK` は届かないこと、復号・事前認証失敗時に Codex が起動しないこと、token が出力されないことを確認した。`bash -n bin/codex-with-gh`、`sh -n bin/gh`、両 fixture、`git diff --check`、`git diff master --check` が成功した。
+- 実機確認: tmux の `Alt-p c` で起動した新規 Codex session で `gh auth status` を実行したところ、`The token in GH_TOKEN is invalid` と出た。これは `GH_TOKEN` が Codex 内の gh へ継承されている一次情報であり、環境継承は成功している。一方、`pass` に保存された token は GitHub 側で無効であるため、対話端末で有効な token へ更新する必要がある。
+
+### 2026-10-07 10:42 : host をまたぐ token 有効性判断の訂正
+- ユーザー指摘: `UM880Plus` の対話 terminal では `gh auth status` が成功している。一方、invalid token が出た Codex は `harutaka-bill2` 上で起動しており、同一 host ではない。
+- 訂正: 異なる host の `pass` store・GPG key・token 状態を同一とみなして、token 更新を案内してはならない。`UM880Plus` で token 更新は不要であり、`harutaka-bill2` の対話 terminal で `gh auth status` を実行して同 host の保存 token を確認する必要がある。
+
+### 2026-10-07 12:02 : 同一 host であることの再訂正
+- ユーザー訂正: invalid token が出た Codex session も `UM880Plus` で実行していた。直前の host が異なるという前提は誤りだった。
+- 訂正: TTY の `gh auth status` 成功と Codex の `GH_TOKEN is invalid` は同一 host 上の食い違いである。token 更新の要否はまだ確定しておらず、TTY wrapper と Codex launcher が token を取得・受け渡す経路の値を、token 本文を出さないハッシュ等で比較してから判断する。
+
+### 2026-10-07 12:11 : token 同一性の確認
+- 検証結果: TTY で `pass show github/cli-token` の先頭行を launcher と同じ手順で整形した SHA-256 と、Codex 内の `GH_TOKEN` の SHA-256 を、値を出さない一致判定で比較した。結果は `match` だった。
+- 判断: launcher の `pass` 取得、先頭行の抽出、pipe による受け渡しは token を変化させていない。TTY の `gh auth status` 成功は、親 fish/tmux に既にある別の `GH_TOKEN` を `bin/gh` が優先している可能性を先に検証する。
+- 追加検証: TTY で `env -u GH_TOKEN gh auth status` を実行しても成功した。`bin/gh` は `pass` から token を復号しているため、`pass` 側の token は有効である。次は launcher の最小環境（`env -i`）が原因か、Codex sandbox が原因かを切り分ける。
+- 追加検証 2: TTY で launcher と同じ token 抽出を行い、`HOME`、`PATH`、`USER`、`TERM`、`LANG`、`GH_TOKEN` だけの `env -i` から `/usr/bin/gh auth status` を実行しても成功した。最小環境化は原因ではない。Codex sandbox 内の command 解決またはネットワーク経路を調査する。
+- 原因確定: Codex 内の `/usr/bin/gh api user` は、ネットワーク許可付き実行で `Authorization: [REDACTED]` を使い `https://api.github.com/user` から HTTP 200 と `irukasano` を返した。通常 sandbox 実行では DNS 通信が遮断される。GitHub CLI の `gh auth status` はこの種の transport failure も `The token in GH_TOKEN is invalid` と表示する既知の誤表示であり、token・launcher・GPG 復号の失敗ではない。
+- 回帰検証: `bash -n bin/codex-with-gh`、`sh -n bin/gh`、両 fixture、`git diff --check`、`git diff master --check` は成功した。lesson 最終確認は vector 検索不可（`sqlite_vec` 未導入）のため `ai/tasks/lessons.md` を `rg` で照合し、GPG 復号境界、環境継承、secret 非出力、通信失敗の認証誤判定に関する Rule へ適合していることを確認した。

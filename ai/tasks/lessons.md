@@ -137,3 +137,21 @@
 - Rule: Codex CLI の workspace-write sandbox で認証情報を利用する設計では、pass と GPG による sandbox 内の復号を前提にしない。GPG の agent 接続や lock file・状態管理はホームディレクトリへの書込みを要し、書込み許可で回避すると秘密鍵領域への権限を広げすぎる。復号は sandbox 外の信頼境界で完了し、必要な認証情報の受け渡し範囲を明示的に限定する。
 - Scope: Codex CLI、workspace-write sandbox、GPG、pass、認証情報、権限境界
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--codex-sandbox-内の-gpg-復号に関する-lesson`
+## Codex の環境変数継承は基礎モードも確認する
+
+- ID: `a0d9ef3b-957c-4e3a-a0fe-0620d51b7b4f`
+- Rule: Codex CLI の子コマンドへ認証用環境変数を渡す設計では、TOKEN 名の自動除外設定だけで継承を判断しない。shell_environment_policy の inherit による基礎継承モードと、実際の sandbox 内での存在確認を合わせて検証する。
+- Scope: Codex CLI、shell_environment_policy、環境変数、認証、GH_TOKEN
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1042--codex-の環境継承基礎モードに関する訂正`
+## 認証比較は実行経路まで一致させる
+
+- ID: `8e41b8c8-6685-4ace-b5ac-91072451296d`
+- Rule: 認証の成否が食い違うときは、host だけでなく token の取得元・変換・受け渡し経路を一致させ、secret 本文を出さないハッシュ等の一次情報で比較してから token の失効や更新要否を判断する。
+- Scope: 認証、CLIラッパー、GitHub CLI、pass、GPG、環境変数
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1202--同一-host-であることの再訂正`
+## 制限環境の認証表示は通信結果で検証する
+
+- ID: `2eb6010a-b8c7-41b4-b00a-b2bbed68dc2e`
+- Rule: ネットワーク制限下の CLI が token invalid と表示しても、認証失敗と断定しない。認証ヘッダーを伏せた API 呼出しの HTTP 応答などで、通信失敗と credential 失効を分けて確認する。
+- Scope: 認証、GitHub CLI、Codex sandbox、ネットワーク制限、環境変数
+- Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1211--token-同一性の確認`

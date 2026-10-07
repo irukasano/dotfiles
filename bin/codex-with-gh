@@ -1,5 +1,15 @@
-#!/bin/sh
+#!/usr/bin/env bash
 set -eu
+
+minimal_environment=()
+
+add_environment() {
+    local name=$1
+
+    if [[ -v $name ]]; then
+        minimal_environment+=("$name=${!name}")
+    fi
+}
 
 if [ -t 0 ] && command -v tty >/dev/null 2>&1; then
     current_tty=$(tty 2>/dev/null || true)
@@ -26,4 +36,18 @@ if [ -z "$token" ]; then
     exit 1
 fi
 
-GH_TOKEN="$token" exec codex "$@"
+for name in HOME PATH USER TERM LANG TZ TMPDIR XDG_RUNTIME_DIR; do
+    add_environment "$name"
+done
+
+for name in "${!LC_@}"; do
+    add_environment "$name"
+done
+
+exec 3<&0
+printf '%s\n' "$token" | env -i "${minimal_environment[@]}" /bin/sh -c '
+    IFS= read -r token
+    exec 0<&3
+    exec 3<&-
+    GH_TOKEN="$token" exec codex -c "shell_environment_policy.inherit=\"all\"" "$@"
+' codex-with-gh "$@"
