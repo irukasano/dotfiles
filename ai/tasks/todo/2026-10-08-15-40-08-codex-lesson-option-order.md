@@ -21,7 +21,7 @@
 - [x] `check` の例を global option がサブコマンドに先行する構文へ修正する。
 - [x] 実コマンド、差分整合性、lesson 検証を実行する。
 - [x] 対象変更を commit する。
-- [ ] 現在の upstream へ push する。
+- [x] 現在の upstream へ push する。
 
 ## Review
 
@@ -34,4 +34,5 @@
 - 修正内容: `SKILL.md` の `check` 例を `codex-lesson --ai-base "$AI_BASE_DIR" check` に修正した。
 - 検証: 正しい順序で `codex-lesson --ai-base ai check` が成功し、`test-codex-lesson.sh` の Markdown-only fixture も成功した。旧構文が skill 文書に存在しないこと、新構文が存在すること、対象差分の `git diff --check` 成功を確認した。
 - lesson 最終確認: `codex-lesson --ai-base ai check` は `sqlite_vec` 未導入のためベクトル検索不可だった。フォールバックで `ai/tasks/lessons.md` の Rule と Scope を照合し、今回追加した「global option はサブコマンド前に置く」以外に適用すべき指摘はなかった。
-- commit: `fb80ed3 fix(codex): correct lesson command option order` を作成した。
+- commit: `9767b42 fix(codex): correct lesson command option order` を作成した。
+- push: `origin/master` へ `9767b42` を push した。
