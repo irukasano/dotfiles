@@ -197,3 +197,9 @@
 - Rule: 認証情報を持つ正本データを clone するための一時 bootstrap credential は、明示的な更新仕様がない限り clone 後の正本 entry に保存してはならない。clone 後は正本 entry の復号・利用確認を行い、一時 credential はその用途だけで破棄する。
 - Scope: GitHub CLI、device authentication、pass、password-store、Git、認証token、bootstrap
 - Review: `ai/tasks/todo/2026-10-08-14-07-00-gh-pass-public-key-diagnosis.md#2026-10-08-14xx--bootstrap-による共有-token-上書きの修正`
+## ユーザーが指定した正本を前提から外さない
+
+- ID: `7c4657a8-d515-4dba-8232-29a2904bade7`
+- Rule: ユーザーがデータの正本を明示している場合、未初期化・複数正本などの一般的な代替前提を混ぜず、その正本を固定した最短の運用手順を提示する。例外は実際にその前提が崩れる証拠がある場合だけ確認する。
+- Scope: 要件確認、運用手順、Git、password-store、GitHub、認証
+- Review: `ai/tasks/todo/2026-10-08-14-07-00-gh-pass-public-key-diagnosis.md#2026-10-08-15xx--github-password-store-正本の前提を維持する`

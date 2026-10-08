@@ -139,3 +139,9 @@
 - 原因: device 認証 token を clone 専用の一時 credential とする要件に対し、`bin/pass-bootstrap` が stage の `github/cli-token` に書き込み、既存の shared token を上書きしていた。
 - 修正内容: `auth update-token --with-token` 呼出しを削除し、stage に clone された既存 `github/cli-token` を `gh --ensure-auth` で復号確認するだけに変更した。shared token が存在しないときは恒久配置も native gh logout も行わず失敗する test を追加した。
 - 検証結果: `sh -n bin/pass-bootstrap`、`sh -n ai/tasks/workspace/test-pass-bootstrap.sh`、`ai/tasks/workspace/test-pass-bootstrap.sh`、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功。実機の `pass git status --short --branch` は `master...origin/master [ahead 1]`、log は先頭の local-only `f332bba Add given password for github/cli-token to store.` が `github/cli-token.gpg` を変更し、`origin/master` は `0b8e02d` のままであることを示した。従って remote 正本を戻す対象はこの local commit だけである。
+
+### 2026-10-08 15:xx : GitHub password-store 正本の前提を維持する
+
+- 原因: ユーザーが一貫して `irukasano/pass` を正本と指定しているにもかかわらず、GitHub repository が未初期化・非正本である一般論を混ぜて説明を複雑にした。
+- 修正内容: `irukasano/pass` を正本と固定する。新規環境は `pass-bootstrap`、既存 local store が残る環境はその store を退避してから `pass-bootstrap`、という2通りだけを案内する。
+- 検証結果: user-provided requirement を再確認。実装済み `pass-bootstrap` は既存 `~/.password-store` があれば安全に停止し、remote の既存 `github/cli-token` を上書きしない。
