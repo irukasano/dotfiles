@@ -77,6 +77,9 @@ done
 
 mkdir "$destination"
 printf '%s\n' fixture-recipient >"$destination/.gpg-id"
+if [ "${STORE_MODE:-complete}" = complete ]; then
+    : >"$destination/github-cli-token.gpg"
+fi
 EOF
 
     cat >"$fixture_dir/bin/gpg" <<'EOF'
@@ -98,16 +101,8 @@ EOF
 #!/bin/sh
 set -eu
 
-if [ "$1" = auth ] && [ "$2" = update-token ]; then
-    test -z "${GH_TOKEN:-}"
-    IFS= read -r token
-    printf '%s\n' "$token" >"$PASSWORD_STORE_DIR/github-cli-token"
-    printf '%s\n' 'update-token' >>"$TEST_DIR/wrapper.log"
-    exit 0
-fi
-
 if [ "$1" = --ensure-auth ]; then
-    test -s "$PASSWORD_STORE_DIR/github-cli-token"
+    test -e "$PASSWORD_STORE_DIR/github-cli-token.gpg"
     test -z "${GH_TOKEN:-}"
     printf '%s\n' 'ensure-auth' >>"$TEST_DIR/wrapper.log"
     exit 0
@@ -135,11 +130,10 @@ run_success() {
     fi
 
     test -d "$test_dir/password-store"
-    test -s "$test_dir/password-store/github-cli-token"
+    test -e "$test_dir/password-store/github-cli-token.gpg"
     test ! -e "$test_dir/native-authenticated"
     assert_contains 'auth login --hostname github.com --web --git-protocol https --skip-ssh-key' "$test_dir/native-gh.log"
     assert_contains 'auth logout --hostname github.com --user fixture-user' "$test_dir/native-gh.log"
-    assert_contains 'update-token' "$test_dir/wrapper.log"
     assert_contains 'ensure-auth' "$test_dir/wrapper.log"
     assert_contains '--list-keys fixture-recipient' "$test_dir/gpg.log"
     assert_contains '--list-secret-keys fixture-recipient' "$test_dir/gpg.log"
@@ -147,6 +141,26 @@ run_success() {
     assert_not_contains 'fixture-token' "$test_dir/stderr"
     if find "$test_dir" -maxdepth 1 -name '.pass-bootstrap.*' | grep -q .; then
         echo 'expected temporary password-store clone to be removed' >&2
+        exit 1
+    fi
+}
+
+run_missing_shared_token() {
+    test_dir="$tmp_dir/missing-shared-token"
+    mkdir "$test_dir"
+    make_fixture "$test_dir"
+
+    if env -u GH_TOKEN PATH="$test_dir/bin:$PATH" TEST_DIR="$test_dir" HOME="$test_dir/home" \
+        PASSWORD_STORE_DIR="$test_dir/password-store" STORE_MODE=missing \
+        "$test_dir/pass-bootstrap" >"$test_dir/stdout" 2>"$test_dir/stderr"; then
+        echo 'expected bootstrap to fail without the shared token' >&2
+        exit 1
+    fi
+
+    test ! -e "$test_dir/password-store"
+    test -e "$test_dir/native-authenticated"
+    if grep -F 'auth logout' "$test_dir/native-gh.log" >/dev/null; then
+        echo 'did not expect native gh logout after shared token failure' >&2
         exit 1
     fi
 }
@@ -198,5 +212,6 @@ run_missing_gpg_key() {
 run_success
 run_existing_native_auth
 run_missing_gpg_key
+run_missing_shared_token
 
 echo 'pass-bootstrap tests passed'

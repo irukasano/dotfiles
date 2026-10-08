@@ -185,3 +185,15 @@
 - Rule: 認証フローの回帰報告では、直近変更だけから原因を推測しない。ユーザーが示す既知の正常 commit の実装を現行と比較し、同じ実行経路の差分を特定してから修正範囲を決める。
 - Scope: 認証、Git履歴、CLIラッパー、Git credential helper、GPG
 - Review: `ai/tasks/todo/2026-10-07-10-42-01-gh-auth-current-specification-investigation.md#2026-10-07-1537--10b917c-の-credential-helper-互換復元`
+## 既存 password-store の移行と新規 bootstrap を区別する
+
+- ID: `f9807e21-9853-4a20-ab2c-285f798ef0ef`
+- Rule: password-store の初期化・同期手順を案内するときは、store が未存在の新規環境と、既存の非Git管理 store を Git remote へ移行する環境を区別する。後者では clone による置換を前提にせず、remote の正本性と既存データの扱いを確認してから Git 初期化または移行手順を決める。
+- Scope: pass、password-store、Git、GitHub、認証bootstrap、移行手順
+- Review: `ai/tasks/todo/2026-10-08-14-07-00-gh-pass-public-key-diagnosis.md#2026-10-08-14xx--既存-password-store-の-github-移行手順の整理`
+## bootstrap credential と正本の認証情報を混同しない
+
+- ID: `9e36417d-0050-44c4-a19e-233499b4e567`
+- Rule: 認証情報を持つ正本データを clone するための一時 bootstrap credential は、明示的な更新仕様がない限り clone 後の正本 entry に保存してはならない。clone 後は正本 entry の復号・利用確認を行い、一時 credential はその用途だけで破棄する。
+- Scope: GitHub CLI、device authentication、pass、password-store、Git、認証token、bootstrap
+- Review: `ai/tasks/todo/2026-10-08-14-07-00-gh-pass-public-key-diagnosis.md#2026-10-08-14xx--bootstrap-による共有-token-上書きの修正`

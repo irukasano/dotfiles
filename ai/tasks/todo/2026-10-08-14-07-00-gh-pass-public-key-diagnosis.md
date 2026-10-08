@@ -37,6 +37,30 @@
 - 未確定事項: なし。
 - ユーザー確認が必要な項目: なし。HLD 合意済み。
 
+### 2026-10-08 14:xx : 既存 password-store の GitHub 移行手順の整理
+
+- 目的: Git 管理前から `github/cli-token` を保持している既存の local password-store を、GitHub の `irukasano/pass` を正本として同期可能にする移行手順を整理する。
+- 変更対象: 未決定。説明・移行手順の検討のみ。
+- 非変更対象: 既存の password-store 内容、GitHub repository、token。
+- 入出力: 既存 `~/.password-store` と GitHub repository の空・既存履歴状態を入力に、安全な Git 初期化・remote 接続手順を出力する。
+- 運用方法: local store を初回 Git repository として初期化後、remote が空の場合だけ初回 push する。remote に既存履歴がある場合は内容比較と移行方針の合意前に変更しない。
+- 失敗時挙動: repository の既存履歴・データ状態が未確認なら push/merge を行わず停止する。
+- 既存機能への影響: なし。
+- 未確定事項: GitHub `irukasano/pass` の既存履歴・内容。
+- ユーザー確認が必要な項目: remote が空でない場合の正本とマージ方針。
+
+### 2026-10-08 14:xx : bootstrap による共有 token 上書きの修正
+
+- 目的: GitHub password-store を正本として全環境が同一の `github/cli-token` を使用する設計を回復する。
+- 変更対象: `bin/pass-bootstrap` とその test。
+- 非変更対象: GitHub 上の password-store、既存 `github/cli-token` の値、通常時の `bin/gh`。
+- 入出力: native gh の device 認証 token は stage clone 子プロセスの `GH_TOKEN` にだけ渡す。clone した store 内の既存 `github/cli-token` を pass で復号確認し、成功時にその store を配置する。
+- 運用方法: bootstrap は共有 token を生成・保存・push しない。native gh は clone 成功後の local logout で破棄する。
+- 失敗時挙動: `.gpg-id` の鍵不足または `github/cli-token` の不在・復号失敗では stage を削除し、既存 store を変更せず native gh 認証を残して停止する。
+- 既存機能への影響: bootstrap 後の local store は GitHub remote にあった token をそのまま使用する。
+- 未確定事項: なし。
+- ユーザー確認が必要な項目: なし。ユーザー指摘により GitHub remote 正本を明示済み。
+
 ## Plan
 
 ### 2026-10-08 14:07 : gh の pass 登録時に公開鍵が見つからない原因調査
@@ -67,6 +91,19 @@
 - [x] shell 構文、既存・新規テスト、差分の whitespace を確認する。
 - [x] lesson skill で最終回答を照合し、Review を完成する。
 
+### 2026-10-08 14:xx : 既存 password-store の GitHub 移行手順の整理
+
+- [x] bootstrap と、既存 local store を Git 管理へ移行するケースを区別する。
+- [x] `pass git clone` ではなく `pass git init` が起点となることを確認する。
+- [ ] remote の履歴状態を確認し、必要なら移行 HLD を別途合意する。
+
+### 2026-10-08 14:xx : bootstrap による共有 token 上書きの修正
+
+- [x] stage の token 上書き処理を削除し、既存 entry の復号確認だけに変更する。
+- [x] 共有 token 不在時の安全停止を test する。
+- [x] 構文・関連テスト・差分を確認する。
+- [x] lesson skill で最終回答を再照合する。
+
 ## Review
 
 ### 2026-10-08 14:07 : gh の pass 登録時に公開鍵が見つからない原因調査
@@ -90,3 +127,15 @@
 - 最終仕様: `bin/pass-bootstrap` を追加した。`GH_TOKEN`、既存 password-store、または native gh の既存認証を検出した場合は変更せず停止する。native gh の `--web` デバイスコード認証で得た token は clone 子プロセスの `GH_TOKEN` と shell 変数内だけに限定する。clone は配置先と同じ親ディレクトリの一時領域で行い、`.gpg-id` の全 recipient について公開鍵・秘密鍵を確認する。stage 内で pass 保存と復号確認が成功した場合だけ store を配置し、native gh のローカル認証を logout する。
 - 実装: `bin/pass-bootstrap` と fake command による `ai/tasks/workspace/test-pass-bootstrap.sh` を追加した。現行 Git credential helper が渡す action を反映するため、既存 `test-gh-no-tty.sh` の `gh auth git-credential` 呼出しへ `get` を追加した。
 - 検証: `sh -n bin/pass-bootstrap`、`sh -n ai/tasks/workspace/test-pass-bootstrap.sh`、`sh -n ai/tasks/workspace/test-gh-no-tty.sh`、新規 bootstrap test、`test-gh-no-tty.sh`、`test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功。新規 test は成功時の token 非出力・native logout、既存 native 認証での無変更停止、GPG 鍵不足時の一時 clone 削除と native auth 保持を確認した。lesson skill は `codex-lesson --ai-base ai check` を実行し、vector search が利用不可のため `ai/tasks/lessons.md` を `rg` で照合した。認証経路と token 出力を明示的に検証する既存 lesson に反する点はない。
+
+### 2026-10-08 14:xx : 既存 password-store の GitHub 移行手順の整理
+
+- 原因: bootstrap の対象（password-store が存在しない新環境）と、既存 local password-store を GitHub repository へ移行する対象を混同して説明した。
+- 修正内容: 既存 store では `pass git clone` ではなく `pass git init` から Git 管理を開始する、と説明を訂正した。
+- 検証結果: password-store 公式の `pass git init`、`pass git pull`、`pass git push` の説明を確認した。`github/cli-token.gpg` は同じ plaintext でも暗号化ごとに異なり得るため、remote が既存データを持つ場合の自動 merge/push は行わない。
+
+### 2026-10-08 14:xx : bootstrap による共有 token 上書きの修正
+
+- 原因: device 認証 token を clone 専用の一時 credential とする要件に対し、`bin/pass-bootstrap` が stage の `github/cli-token` に書き込み、既存の shared token を上書きしていた。
+- 修正内容: `auth update-token --with-token` 呼出しを削除し、stage に clone された既存 `github/cli-token` を `gh --ensure-auth` で復号確認するだけに変更した。shared token が存在しないときは恒久配置も native gh logout も行わず失敗する test を追加した。
+- 検証結果: `sh -n bin/pass-bootstrap`、`sh -n ai/tasks/workspace/test-pass-bootstrap.sh`、`ai/tasks/workspace/test-pass-bootstrap.sh`、`ai/tasks/workspace/test-gh-no-tty.sh`、`ai/tasks/workspace/test-codex-with-gh.sh`、`git diff --check`、`git diff master --check` が成功。実機の `pass git status --short --branch` は `master...origin/master [ahead 1]`、log は先頭の local-only `f332bba Add given password for github/cli-token to store.` が `github/cli-token.gpg` を変更し、`origin/master` は `0b8e02d` のままであることを示した。従って remote 正本を戻す対象はこの local commit だけである。

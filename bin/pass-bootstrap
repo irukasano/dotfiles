@@ -103,9 +103,6 @@ while IFS= read -r recipient || [ -n "$recipient" ]; do
     fi
 done <"$gpg_id_file"
 
-printf '%s\n' "$bootstrap_token" | \
-    PASSWORD_STORE_DIR="$stage_store" "$script_dir/gh" auth update-token --with-token
-
 PASSWORD_STORE_DIR="$stage_store" GH_TOKEN='' "$script_dir/gh" --ensure-auth
 
 native_user=$(/usr/bin/gh api user --hostname "$github_host" --jq .login)
