@@ -1,0 +1,121 @@
+#!/bin/sh
+set -eu
+
+github_host='github.com'
+store_repo='https://github.com/irukasano/pass.git'
+script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+store_dir=${PASSWORD_STORE_DIR:-"$HOME/.password-store"}
+store_parent=$(dirname -- "$store_dir")
+stage_dir=''
+
+die() {
+    echo "pass-bootstrap: $*" >&2
+    exit 1
+}
+
+cleanup() {
+    if [ -n "$stage_dir" ] && [ -d "$stage_dir" ]; then
+        rm -rf -- "$stage_dir"
+    fi
+}
+
+require_command() {
+    if ! command -v "$1" >/dev/null 2>&1; then
+        die "$1 コマンドが必要です"
+    fi
+}
+
+has_gpg_key() {
+    key_type=$1
+    recipient=$2
+
+    case "$key_type" in
+        public)
+            gpg --batch --list-keys "$recipient" >/dev/null 2>&1
+            ;;
+        secret)
+            gpg --batch --list-secret-keys "$recipient" >/dev/null 2>&1
+            ;;
+    esac
+}
+
+if [ "$#" -ne 0 ]; then
+    die '引数は指定できません'
+fi
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    die 'GH_TOKEN が設定されています。unset してから実行してください'
+fi
+
+if [ -e "$store_dir" ]; then
+    die "$store_dir は既に存在します。既存の password-store は変更しません"
+fi
+
+if [ ! -d "$store_parent" ]; then
+    die "password-store の親ディレクトリが存在しません: $store_parent"
+fi
+
+if [ ! -x /usr/bin/gh ]; then
+    die '/usr/bin/gh が必要です'
+fi
+
+require_command git
+require_command gpg
+require_command pass
+
+if /usr/bin/gh auth token --hostname "$github_host" >/dev/null 2>&1; then
+    die "native gh に $github_host の既存認証があります。既存認証は変更しません"
+fi
+
+trap cleanup EXIT HUP INT TERM
+
+echo 'pass-bootstrap: GitHub のデバイスコード認証を開始します' >&2
+/usr/bin/gh auth login --hostname "$github_host" --web --git-protocol https --skip-ssh-key
+
+bootstrap_token=$(/usr/bin/gh auth token --hostname "$github_host")
+if [ -z "$bootstrap_token" ]; then
+    die 'native gh から token を取得できませんでした'
+fi
+
+stage_dir=$(mktemp -d "$store_parent/.pass-bootstrap.XXXXXX")
+stage_store="$stage_dir/store"
+
+env GH_TOKEN="$bootstrap_token" git clone "$store_repo" "$stage_store"
+
+gpg_id_file="$stage_store/.gpg-id"
+if [ ! -s "$gpg_id_file" ]; then
+    die 'clone した password-store に .gpg-id がありません'
+fi
+
+while IFS= read -r recipient || [ -n "$recipient" ]; do
+    case "$recipient" in
+        '' | \#*)
+            continue
+            ;;
+    esac
+
+    if ! has_gpg_key public "$recipient"; then
+        die ".gpg-id の公開鍵が import されていません: $recipient"
+    fi
+
+    if ! has_gpg_key secret "$recipient"; then
+        die ".gpg-id の秘密鍵が import されていません: $recipient"
+    fi
+done <"$gpg_id_file"
+
+printf '%s\n' "$bootstrap_token" | \
+    PASSWORD_STORE_DIR="$stage_store" "$script_dir/gh" auth update-token --with-token
+
+PASSWORD_STORE_DIR="$stage_store" GH_TOKEN='' "$script_dir/gh" --ensure-auth
+
+native_user=$(/usr/bin/gh api user --hostname "$github_host" --jq .login)
+if [ -z "$native_user" ]; then
+    die 'native gh のログインユーザーを取得できませんでした'
+fi
+
+unset bootstrap_token
+
+mv "$stage_store" "$store_dir"
+/usr/bin/gh auth logout --hostname "$github_host" --user "$native_user"
+
+echo "pass-bootstrap: $store_dir の初期設定が完了しました" >&2
