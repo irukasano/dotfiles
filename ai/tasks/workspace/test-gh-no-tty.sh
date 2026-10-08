@@ -45,7 +45,7 @@ assert_not_contains 'fake-token' "$tmp_dir/no-tty.err"
 no_tty_credential_log="$tmp_dir/no-tty-credential.log"
 printf 'protocol=https\nhost=github.com\n\n' | \
     env -u GH_TOKEN GPG_TTY='/dev/pts/inherited' PATH="$fake_bin:$PATH" \
-    TEST_LOG="$no_tty_credential_log" "$target" auth git-credential \
+    TEST_LOG="$no_tty_credential_log" "$target" auth git-credential get \
     >"$tmp_dir/no-tty-credential.out" 2>"$tmp_dir/no-tty-credential.err"
 assert_contains 'GPG_TTY=/dev/pts/inherited' "$no_tty_credential_log"
 assert_contains 'PASS_STDIN=not-a-tty' "$no_tty_credential_log"
@@ -72,7 +72,7 @@ credential_failure_log="$tmp_dir/credential-failure.log"
 if printf 'protocol=https\nhost=github.com\n\n' | \
     env -u GH_TOKEN GPG_TTY='/dev/pts/inherited' PATH="$fake_bin:$PATH" \
     TEST_LOG="$credential_failure_log" PASS_RESULT=failure \
-    "$target" auth git-credential >"$tmp_dir/credential-failure.out" 2>"$tmp_dir/credential-failure.err"; then
+    "$target" auth git-credential get >"$tmp_dir/credential-failure.out" 2>"$tmp_dir/credential-failure.err"; then
     echo 'expected git credential decryption failure' >&2
     exit 1
 fi
