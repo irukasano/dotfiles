@@ -203,3 +203,9 @@
 - Rule: ユーザーがデータの正本を明示している場合、未初期化・複数正本などの一般的な代替前提を混ぜず、その正本を固定した最短の運用手順を提示する。例外は実際にその前提が崩れる証拠がある場合だけ確認する。
 - Scope: 要件確認、運用手順、Git、password-store、GitHub、認証
 - Review: `ai/tasks/todo/2026-10-08-14-07-00-gh-pass-public-key-diagnosis.md#2026-10-08-15xx--github-password-store-正本の前提を維持する`
+## global option はサブコマンド前に置く
+
+- ID: `6f248559-55c6-4376-aea7-470c4bc2028f`
+- Rule: CLI 文書で global option を伴うコマンド例を示すときは、option をサブコマンドより前に配置し、実際の引数パーサーで実行確認する。
+- Scope: Codex skill、argparse CLI 文書
+- Review: `ai/tasks/todo/2026-10-08-15-40-08-codex-lesson-option-order.md#2026-10-08-1540--codex-lesson-オプション順序の調査`

@@ -7,7 +7,7 @@ description: Record user-correction lessons and verify a final answer against pr
 
 Use this skill when a user correction needs to become a reusable lesson, when migrating legacy lessons, and at the end of a task that changes code or configuration.
 
-Resolve `AI_BASE_DIR` from the applicable AGENTS instructions. Use `~/.codex/bin/codex-lesson check --ai-base "$AI_BASE_DIR"` before relying on vector search.
+Resolve `AI_BASE_DIR` from the applicable AGENTS instructions. Use `~/.codex/bin/codex-lesson --ai-base "$AI_BASE_DIR" check` before relying on vector search.
 
 ## Record a correction
 
