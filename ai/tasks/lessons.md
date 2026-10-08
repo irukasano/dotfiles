@@ -209,3 +209,9 @@
 - Rule: CLI 文書で global option を伴うコマンド例を示すときは、option をサブコマンドより前に配置し、実際の引数パーサーで実行確認する。
 - Scope: Codex skill、argparse CLI 文書
 - Review: `ai/tasks/todo/2026-10-08-15-40-08-codex-lesson-option-order.md#2026-10-08-1540--codex-lesson-オプション順序の調査`
+## セットアップの診断と初期化を分離する
+
+- ID: `bc6e5aa9-dcc9-44b4-900f-68f6363c55cc`
+- Rule: ローカルモデルを使うセットアップでは、キャッシュ設定をライブラリの import 前に診断・索引化を含む全実行経路へ渡し、診断コマンドの副作用に依存せず索引初期化を明示的に実行する。
+- Scope: Python、sentence-transformers、Hugging Face キャッシュ、SQLite、セットアップ、初期化
+- Review: `ai/tasks/todo/2026-10-08-17-33-56-codex-lesson-initial-index.md#2026-10-08-1733--初期導入時の-lesson-sqlite-索引`

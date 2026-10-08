@@ -16,7 +16,9 @@ from dataclasses import dataclass
 from pathlib import Path
 
 
-VENV_PYTHON = Path.home() / ".codex" / "lesson" / ".venv" / "bin" / "python"
+LESSON_HOME = Path.home() / ".codex" / "lesson"
+VENV_PYTHON = LESSON_HOME / ".venv" / "bin" / "python"
+MODEL_CACHE = LESSON_HOME / "huggingface"
 MODEL_NAME = "intfloat/multilingual-e5-small"
 EMBEDDING_DIMENSIONS = 384
 
@@ -24,7 +26,7 @@ EMBEDDING_DIMENSIONS = 384
 def use_lesson_venv() -> None:
     if not VENV_PYTHON.is_file():
         return
-    if Path(sys.executable).resolve() == VENV_PYTHON.resolve():
+    if Path(sys.prefix).resolve() == VENV_PYTHON.parent.parent.resolve():
         return
     os.execv(str(VENV_PYTHON), [str(VENV_PYTHON), str(Path(__file__).resolve()), *sys.argv[1:]])
 
@@ -94,8 +96,13 @@ def write_lesson(path: Path, lesson: Lesson) -> None:
     path.write_text(path.read_text(encoding="utf-8").rstrip() + markdown_entry(lesson), encoding="utf-8")
 
 
+def configure_model_cache() -> None:
+    os.environ.setdefault("HF_HOME", str(MODEL_CACHE))
+
+
 def dependency_status(load_model: bool = False) -> tuple[bool, str]:
     try:
+        configure_model_cache()
         import sqlite_vec  # noqa: F401
         from sentence_transformers import SentenceTransformer
 
@@ -106,7 +113,6 @@ def dependency_status(load_model: bool = False) -> tuple[bool, str]:
         connection.execute("select vec_version()").fetchone()
         connection.close()
         if load_model:
-            os.environ.setdefault("HF_HOME", str(Path.home() / ".codex" / "lesson" / "huggingface"))
             SentenceTransformer(MODEL_NAME, local_files_only=True)
     except Exception as error:  # dependency probes must leave Markdown mode usable
         return False, str(error)
@@ -114,7 +120,7 @@ def dependency_status(load_model: bool = False) -> tuple[bool, str]:
 
 
 def embedding_model():
-    os.environ.setdefault("HF_HOME", str(Path.home() / ".codex" / "lesson" / "huggingface"))
+    configure_model_cache()
     from sentence_transformers import SentenceTransformer
 
     return SentenceTransformer(MODEL_NAME, local_files_only=True)
@@ -194,6 +200,11 @@ def command_check(arguments: argparse.Namespace) -> int:
     return 0
 
 
+def command_sync(arguments: argparse.Namespace) -> int:
+    sync_index(ai_base(arguments.ai_base))
+    return 0
+
+
 def command_add(arguments: argparse.Namespace) -> int:
     base = ai_base(arguments.ai_base)
     lesson = Lesson(
@@ -241,8 +252,8 @@ def command_search(arguments: argparse.Namespace) -> int:
             FROM lesson_vectors
             JOIN lesson_records ON lesson_records.rowid = lesson_vectors.rowid
             WHERE lesson_vectors.embedding MATCH ?
+              AND k = 5
             ORDER BY lesson_vectors.distance
-            LIMIT 5
             """,
             (serialize_f32(query),),
         ).fetchall()
@@ -278,6 +289,7 @@ def parser() -> argparse.ArgumentParser:
     argument_parser.add_argument("--ai-base", help="AI_BASE_DIR (defaults to $AI_BASE_DIR or ai)")
     commands = argument_parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check")
+    commands.add_parser("sync")
     add = commands.add_parser("add")
     add.add_argument("--title", required=True)
     add.add_argument("--rule", required=True)
@@ -295,6 +307,7 @@ def main() -> int:
     try:
         return {
             "check": command_check,
+            "sync": command_sync,
             "add": command_add,
             "search": command_search,
             "migrate-init": command_migrate_init,
