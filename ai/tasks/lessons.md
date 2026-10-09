@@ -215,3 +215,9 @@
 - Rule: ローカルモデルを使うセットアップでは、キャッシュ設定をライブラリの import 前に診断・索引化を含む全実行経路へ渡し、診断コマンドの副作用に依存せず索引初期化を明示的に実行する。
 - Scope: Python、sentence-transformers、Hugging Face キャッシュ、SQLite、セットアップ、初期化
 - Review: `ai/tasks/todo/2026-10-08-17-33-56-codex-lesson-initial-index.md#2026-10-08-1733--初期導入時の-lesson-sqlite-索引`
+## 索引の配置要件を推測しない
+
+- ID: `9337f6e1-9ce1-42a8-8056-68ce266e576e`
+- Rule: リポジトリ単位で保持すべきデータの索引配置は、集約方式を推測せず、利用者が指定した保存単位と初期化手順に従う。
+- Scope: Codex lesson、SQLite、リポジトリ単位のデータ管理
+- Review: `tasks/todo/2026-10-09-09-34-09-cross-repository-lesson-index.md#2026-10-09-09-34-他リポジトリでの-lesson-sqlite-索引`

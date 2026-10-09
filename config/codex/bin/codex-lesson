@@ -100,16 +100,21 @@ def configure_model_cache() -> None:
     os.environ.setdefault("HF_HOME", str(MODEL_CACHE))
 
 
+def load_sqlite_vec(connection: sqlite3.Connection) -> None:
+    import sqlite_vec
+
+    connection.enable_load_extension(True)
+    sqlite_vec.load(connection)
+    connection.enable_load_extension(False)
+
+
 def dependency_status(load_model: bool = False) -> tuple[bool, str]:
     try:
         configure_model_cache()
-        import sqlite_vec  # noqa: F401
         from sentence_transformers import SentenceTransformer
 
         connection = sqlite3.connect(":memory:")
-        connection.enable_load_extension(True)
-        sqlite_vec.load(connection)
-        connection.enable_load_extension(False)
+        load_sqlite_vec(connection)
         connection.execute("select vec_version()").fetchone()
         connection.close()
         if load_model:
@@ -126,6 +131,13 @@ def embedding_model():
     return SentenceTransformer(MODEL_NAME, local_files_only=True)
 
 
+def require_embedding_model():
+    try:
+        return embedding_model()
+    except Exception as error:
+        raise RuntimeError(f"vector dependencies are unavailable: {error}") from error
+
+
 def vector_text(lesson: Lesson) -> str:
     return f"Rule: {lesson.rule}\nScope: {lesson.scope}"
 
@@ -134,23 +146,43 @@ def serialize_f32(vector: list[float]) -> bytes:
     return struct.pack(f"{len(vector)}f", *vector)
 
 
+def index_status(database_path: Path) -> tuple[bool, str]:
+    if not database_path.is_file():
+        return False, "vector index is not initialized"
+    connection = sqlite3.connect(database_path)
+    try:
+        load_sqlite_vec(connection)
+        table_names = {
+            row[0]
+            for row in connection.execute(
+                "SELECT name FROM sqlite_master WHERE type IN ('table', 'virtual table')"
+            )
+        }
+        missing = {"lesson_records", "lesson_vectors"} - table_names
+        if missing:
+            return False, f"vector index is missing tables: {', '.join(sorted(missing))}"
+        connection.execute("SELECT count(*) FROM lesson_records").fetchone()
+        connection.execute("SELECT count(*) FROM lesson_vectors").fetchone()
+    except (OSError, sqlite3.Error) as error:
+        return False, str(error)
+    finally:
+        connection.close()
+    return True, "available"
+
+
 def sync_index(base: Path) -> None:
-    available, reason = dependency_status(load_model=True)
+    available, reason = dependency_status()
     if not available:
         raise RuntimeError(f"vector dependencies are unavailable: {reason}")
     lessons_path, _, database_path = lesson_paths(base)
     lessons = parse_lessons(lessons_path)
-    model = embedding_model()
+    model = require_embedding_model()
     vectors = model.encode([vector_text(lesson) for lesson in lessons], normalize_embeddings=True).tolist()
 
     database_path.parent.mkdir(parents=True, exist_ok=True)
     connection = sqlite3.connect(database_path)
     try:
-        import sqlite_vec
-
-        connection.enable_load_extension(True)
-        sqlite_vec.load(connection)
-        connection.enable_load_extension(False)
+        load_sqlite_vec(connection)
         with connection:
             connection.execute("DROP TABLE IF EXISTS lesson_vectors")
             connection.execute("DROP TABLE IF EXISTS lesson_records")
@@ -185,6 +217,10 @@ def command_check(arguments: argparse.Namespace) -> int:
     base = ai_base(arguments.ai_base)
     lessons, legacy, database = lesson_paths(base)
     available, reason = dependency_status(load_model=True)
+    index_available = False
+    index_reason = "vector dependencies are unavailable"
+    if available:
+        index_available, index_reason = index_status(database)
     print(
         json.dumps(
             {
@@ -193,6 +229,8 @@ def command_check(arguments: argparse.Namespace) -> int:
                 "database": str(database),
                 "vector_available": available,
                 "reason": reason,
+                "index_available": index_available,
+                "index_reason": index_reason,
             },
             ensure_ascii=False,
         )
@@ -201,6 +239,11 @@ def command_check(arguments: argparse.Namespace) -> int:
 
 
 def command_sync(arguments: argparse.Namespace) -> int:
+    sync_index(ai_base(arguments.ai_base))
+    return 0
+
+
+def command_init(arguments: argparse.Namespace) -> int:
     sync_index(ai_base(arguments.ai_base))
     return 0
 
@@ -228,7 +271,7 @@ def command_add(arguments: argparse.Namespace) -> int:
 
 def command_search(arguments: argparse.Namespace) -> int:
     base = ai_base(arguments.ai_base)
-    available, reason = dependency_status(load_model=True)
+    available, reason = dependency_status()
     if not available:
         print(f"vector search unavailable: {reason}", file=sys.stderr)
         return 2
@@ -236,15 +279,11 @@ def command_search(arguments: argparse.Namespace) -> int:
     if not database_path.is_file():
         print("vector index is not initialized", file=sys.stderr)
         return 2
-    model = embedding_model()
+    model = require_embedding_model()
     query = model.encode([arguments.query], normalize_embeddings=True).tolist()[0]
     connection = sqlite3.connect(database_path)
     try:
-        import sqlite_vec
-
-        connection.enable_load_extension(True)
-        sqlite_vec.load(connection)
-        connection.enable_load_extension(False)
+        load_sqlite_vec(connection)
         rows = connection.execute(
             """
             SELECT lesson_records.id, lesson_records.title, lesson_records.rule,
@@ -289,6 +328,7 @@ def parser() -> argparse.ArgumentParser:
     argument_parser.add_argument("--ai-base", help="AI_BASE_DIR (defaults to $AI_BASE_DIR or ai)")
     commands = argument_parser.add_subparsers(dest="command", required=True)
     commands.add_parser("check")
+    commands.add_parser("init")
     commands.add_parser("sync")
     add = commands.add_parser("add")
     add.add_argument("--title", required=True)
@@ -307,6 +347,7 @@ def main() -> int:
     try:
         return {
             "check": command_check,
+            "init": command_init,
             "sync": command_sync,
             "add": command_add,
             "search": command_search,

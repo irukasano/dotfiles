@@ -34,6 +34,12 @@ if env -u HF_HOME HOME="$fixture_dir/empty-home" "$command_path" --ai-base "$mar
   exit 1
 fi
 
+if env -u HF_HOME HOME="$fixture_dir/empty-home" "$command_path" --ai-base "$markdown_base" init; then
+  echo 'init unexpectedly succeeded without installed vector dependencies' >&2
+  exit 1
+fi
+test ! -e "$markdown_base/tasks/lessons.sqlite"
+
 if [ -x "$original_home/.codex/lesson/.venv/bin/python" ] \
   && HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" check | rg -q '"vector_available": true'; then
   mkdir -p "$vector_base/tasks"
@@ -46,8 +52,12 @@ if [ -x "$original_home/.codex/lesson/.venv/bin/python" ] \
     '- Scope: Codex lesson、SQLite、初期化' \
     '- Review: `tasks/todo/example.md#review`' \
     > "$vector_base/tasks/lessons.md"
-  HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" sync
+  before_init_check="$(HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" check)"
+  rg -q '"index_available": false' <<<"$before_init_check"
+  HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" init
   test -f "$vector_base/tasks/lessons.sqlite"
+  after_init_check="$(HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" check)"
+  rg -q '"index_available": true' <<<"$after_init_check"
   search_result="$(HF_HOME="$original_home/.codex/lesson/huggingface" "$command_path" --ai-base "$vector_base" search --query '初期導入の SQLite 索引')"
   rg -q --fixed-strings -- '初期同期の確認' <<<"$search_result"
   rg -q --fixed-strings -- 'tasks/todo/example.md#review' <<<"$search_result"

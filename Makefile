@@ -341,8 +341,8 @@ codex-lesson: python3 codex-settings ## Codex lesson のローカル検索環境
 	fi; \
 	"$$LESSON_HOME/.venv/bin/python" -m pip install --upgrade pip sqlite-vec sentence-transformers; \
 	HF_HOME="$$LESSON_HOME/huggingface" "$$LESSON_HOME/.venv/bin/python" -c 'from sentence_transformers import SentenceTransformer; SentenceTransformer("intfloat/multilingual-e5-small")'; \
-	HF_HOME="$$LESSON_HOME/huggingface" "$$HOME/.codex/bin/codex-lesson" check; \
-	HF_HOME="$$LESSON_HOME/huggingface" "$$HOME/.codex/bin/codex-lesson" sync
+	HF_HOME="$$LESSON_HOME/huggingface" "$$HOME/.codex/bin/codex-lesson" init; \
+	HF_HOME="$$LESSON_HOME/huggingface" "$$HOME/.codex/bin/codex-lesson" check
 
 #---------------------------------------------------------------------------------#
 # tmux
