@@ -3,14 +3,9 @@ set -eu
 
 token_name='github/cli-token'
 has_tty=0
-is_git_credential=0
 
 if [ -t 0 ] && [ -t 2 ]; then
     has_tty=1
-fi
-
-if [ "${1:-}" = "auth" ] && [ "${2:-}" = "git-credential" ]; then
-    is_git_credential=1
 fi
 
 set_gpg_tty() {
@@ -85,17 +80,18 @@ if [ -n "${GH_TOKEN:-}" ]; then
     exec /usr/bin/gh "$@"
 fi
 
-if [ "$has_tty" -ne 1 ] && [ "$is_git_credential" -ne 1 ]; then
-    echo 'gh: 非対話では GH_TOKEN を設定してください' >&2
-    exit 1
-fi
-
 ensure_pass
 set_gpg_tty
 
+if [ "$has_tty" -ne 1 ]; then
+    # no-tty では既存の gpg-agent cache だけを使い、cache miss 時に
+    # pinentry を起動しない。
+    export PASSWORD_STORE_GPG_OPTS="${PASSWORD_STORE_GPG_OPTS:+$PASSWORD_STORE_GPG_OPTS }--batch --pinentry-mode error"
+fi
+
 if ! pass show "$token_name" >/dev/null 2>&1; then
     if [ "$has_tty" -ne 1 ]; then
-        echo "gh: $token_name を非対話では復元できません。先に 'gh --ensure-auth' または 'gh auth update-token' を実行してください" >&2
+        echo "gh: $token_name を非対話環境から復号できません。GPG cache が使えないか、gpg-agent に接続できない可能性があります。対話端末から再実行するか GH_TOKEN を設定してください" >&2
         exit 1
     fi
 

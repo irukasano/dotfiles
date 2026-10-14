@@ -28,19 +28,35 @@ assert_not_contains() {
 }
 
 no_tty_log="$tmp_dir/no-tty.log"
-if env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_LOG="$no_tty_log" \
+env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_LOG="$no_tty_log" \
     PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=success \
-    "$target" --ensure-auth >"$tmp_dir/no-tty.out" 2>"$tmp_dir/no-tty.err"; then
-    echo 'expected no-tty authentication failure without GH_TOKEN' >&2
-    exit 1
-fi
-if [ -e "$no_tty_log" ]; then
-    echo 'did not expect pass to run without GH_TOKEN in no-tty mode' >&2
-    exit 1
-fi
-assert_contains 'GH_TOKEN を設定してください' "$tmp_dir/no-tty.err"
+    "$target" --ensure-auth >"$tmp_dir/no-tty.out" 2>"$tmp_dir/no-tty.err"
+assert_contains '--trust-model always --batch --pinentry-mode error' "$no_tty_log"
+assert_not_contains 'GH_TOKEN を設定してください' "$tmp_dir/no-tty.err"
 assert_not_contains 'fake-token' "$tmp_dir/no-tty.out"
 assert_not_contains 'fake-token' "$tmp_dir/no-tty.err"
+
+no_tty_command_log="$tmp_dir/no-tty-command.log"
+env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_LOG="$no_tty_command_log" \
+    PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=success \
+    "$target" --version >"$tmp_dir/no-tty-command.out" 2>"$tmp_dir/no-tty-command.err"
+assert_contains '--trust-model always --batch --pinentry-mode error' "$no_tty_command_log"
+assert_contains 'gh version' "$tmp_dir/no-tty-command.out"
+assert_not_contains 'fake-token' "$tmp_dir/no-tty-command.out"
+assert_not_contains 'fake-token' "$tmp_dir/no-tty-command.err"
+
+no_tty_failure_log="$tmp_dir/no-tty-failure.log"
+if env -u GH_TOKEN PATH="$fake_bin:$PATH" TEST_LOG="$no_tty_failure_log" \
+    PASSWORD_STORE_GPG_OPTS='--trust-model always' PASS_RESULT=failure \
+    "$target" --ensure-auth >"$tmp_dir/no-tty-failure.out" 2>"$tmp_dir/no-tty-failure.err"; then
+    echo 'expected no-tty authentication failure when pass cannot decrypt' >&2
+    exit 1
+fi
+assert_contains '--trust-model always --batch --pinentry-mode error' "$no_tty_failure_log"
+assert_contains 'GPG cache が使えないか、gpg-agent に接続できない可能性があります' "$tmp_dir/no-tty-failure.err"
+assert_not_contains 'fake pass failure' "$tmp_dir/no-tty-failure.err"
+assert_not_contains 'fake-token' "$tmp_dir/no-tty-failure.out"
+assert_not_contains 'fake-token' "$tmp_dir/no-tty-failure.err"
 
 no_tty_credential_log="$tmp_dir/no-tty-credential.log"
 printf 'protocol=https\nhost=github.com\n\n' | \
@@ -76,7 +92,7 @@ if printf 'protocol=https\nhost=github.com\n\n' | \
     echo 'expected git credential decryption failure' >&2
     exit 1
 fi
-assert_contains 'gh: github/cli-token を非対話では復元できません' "$tmp_dir/credential-failure.err"
+assert_contains 'GPG cache が使えないか、gpg-agent に接続できない可能性があります' "$tmp_dir/credential-failure.err"
 assert_not_contains '未設定です。これから登録します' "$tmp_dir/credential-failure.err"
 assert_contains 'GPG_TTY=/dev/pts/inherited' "$credential_failure_log"
 if [ "$(grep -c '^PASS_STDIN=not-a-tty$' "$credential_failure_log")" -ne 1 ]; then
