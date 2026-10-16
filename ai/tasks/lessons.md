@@ -221,3 +221,15 @@
 - Rule: リポジトリ単位で保持すべきデータの索引配置は、集約方式を推測せず、利用者が指定した保存単位と初期化手順に従う。
 - Scope: Codex lesson、SQLite、リポジトリ単位のデータ管理
 - Review: `tasks/todo/2026-10-09-09-34-09-cross-repository-lesson-index.md#2026-10-09-09-34-他リポジトリでの-lesson-sqlite-索引`
+## Git credential helper の no-tty と対話端末を区別する
+
+- ID: `f38edb9a-5a6c-4c3f-9f3c-de48cc1102f8`
+- Rule: credential helper の stdin が protocol pipe でも、呼出元の制御端末が使える場合がある。pinentry を抑止するときは stdin の TTY 有無だけで判断せず、UI を許可する通常端末と no-UI の agent 実行を区別する。
+- Scope: Git credential helper、GPG、pinentry、TTY、Codex、process ancestry
+- Review: `ai/tasks/todo/2026-10-16-08-54-39-gh-credential-no-tty-prompt.md#2026-10-16-0854--no-tty-と-terminal-非対話を区別する`
+## Codex 配下の認証可否を親プロセスから判定する
+
+- ID: `12ffa11f-8063-48df-9405-e2e0567a74c6`
+- Rule: 認証ラッパーの対話可否を分けるときは、呼出し元の親プロセス文脈を先に判定し、その後に許可される認証情報を選ぶ。stdin の TTY 状態だけで agent UI の可否を決めず、Codex 配下で許可されない認証手段へフォールバックさせない。
+- Scope: GitHub CLI、Git credential helper、Codex、親プロセス、GH_TOKEN、GPG、pinentry
+- Review: `ai/tasks/todo/2026-10-16-08-54-39-gh-credential-no-tty-prompt.md#2026-10-16-0905--親-codex-優先の認証マトリックス`

@@ -1,0 +1,27 @@
+#!/bin/sh
+set -eu
+
+case "${TEST_PROCESS_KIND:-other}" in
+    codex)
+        printf '%s\n' '1 codex'
+        ;;
+    codex-grandparent)
+        count=0
+        if [ -f "${TEST_PS_STATE:?}" ]; then
+            count=$(cat "$TEST_PS_STATE")
+        fi
+        count=$((count + 1))
+        printf '%s\n' "$count" >"$TEST_PS_STATE"
+        if [ "$count" -eq 1 ]; then
+            printf '%s\n' '22 sh'
+        else
+            printf '%s\n' '1 codex'
+        fi
+        ;;
+    unavailable)
+        exit 1
+        ;;
+    *)
+        printf '%s\n' '1 sh'
+        ;;
+esac
