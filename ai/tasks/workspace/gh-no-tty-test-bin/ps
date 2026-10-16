@@ -1,6 +1,16 @@
 #!/bin/sh
 set -eu
 
+queried_pid=''
+previous=''
+for argument do
+    if [ "$previous" = '-p' ]; then
+        queried_pid=$argument
+        break
+    fi
+    previous=$argument
+done
+
 case "${TEST_PROCESS_KIND:-other}" in
     codex)
         printf '%s\n' '1 codex'
@@ -18,10 +28,27 @@ case "${TEST_PROCESS_KIND:-other}" in
             printf '%s\n' '1 codex'
         fi
         ;;
+    codex-pid1)
+        count=0
+        if [ -f "${TEST_PS_STATE:?}" ]; then
+            count=$(cat "$TEST_PS_STATE")
+        fi
+        count=$((count + 1))
+        printf '%s\n' "$count" >"$TEST_PS_STATE"
+        if [ "$count" -eq 1 ]; then
+            printf '%s\n' '1 sh'
+        else
+            printf '%s\n' '0 codex'
+        fi
+        ;;
     unavailable)
         exit 1
         ;;
     *)
-        printf '%s\n' '1 sh'
+        if [ "$queried_pid" = '1' ]; then
+            printf '%s\n' '0 init'
+        else
+            printf '%s\n' '1 sh'
+        fi
         ;;
 esac

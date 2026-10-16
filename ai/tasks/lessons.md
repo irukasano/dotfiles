@@ -233,3 +233,15 @@
 - Rule: 認証ラッパーの対話可否を分けるときは、呼出し元の親プロセス文脈を先に判定し、その後に許可される認証情報を選ぶ。stdin の TTY 状態だけで agent UI の可否を決めず、Codex 配下で許可されない認証手段へフォールバックさせない。
 - Scope: GitHub CLI、Git credential helper、Codex、親プロセス、GH_TOKEN、GPG、pinentry
 - Review: `ai/tasks/todo/2026-10-16-08-54-39-gh-credential-no-tty-prompt.md#2026-10-16-0905--親-codex-優先の認証マトリックス`
+## sandbox 制限と昇格要求の未実施を区別する
+
+- ID: `15cabc82-c648-40df-ad00-5b1f15a75931`
+- Rule: sandbox 内のアクセス制限を越える必要があるとき、技術的に不可能と断定する前に、依頼がその操作と秘密情報の利用まで認可しているか確認する。認可された操作なら昇格実行を要求し、その審査結果を確認する。昇格要求を出していない場合は、sandbox 内の失敗と審査による拒否を区別して伝える。
+- Scope: Codex sandbox、require_escalated、承認レビュー、GPG、秘密情報、Git メタデータ
+- Review: `ai/tasks/todo/2026-10-16-08-54-39-gh-credential-no-tty-prompt.md#2026-10-16-0930--権限昇格判断のセッション間再発防止`
+## プロセス祖先判定で PID 1 を検査する
+
+- ID: `b083d56f-3347-46f1-8942-354bdb1cd05b`
+- Rule: プロセス名前空間内の祖先判定では PID 1 を走査対象から除外しない。コンテナやsandboxでは目的の親プロセス自身が PID 1 になり得るため、終端の PID 1 も判定する。
+- Scope: Linux、プロセス名前空間、親プロセス判定、CLIラッパー、sandbox
+- Review: `ai/tasks/todo/2026-10-16-08-54-39-gh-credential-no-tty-prompt.md#2026-10-16-0946--pid-1-の-codex-判定漏れ`

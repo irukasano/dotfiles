@@ -25,7 +25,7 @@ set_gpg_tty() {
 is_codex_ancestor() {
     pid=$PPID
 
-    while [ "$pid" -gt 1 ] 2>/dev/null; do
+    while [ "$pid" -gt 0 ] 2>/dev/null; do
         if ! process_row=$(ps -o ppid=,comm= -p "$pid" 2>/dev/null); then
             return 0
         fi
@@ -65,7 +65,13 @@ fail_auth() {
     exit 1
 }
 
-if is_codex_ancestor && [ -z "${GH_TOKEN:-}" ]; then
+codex_ancestor=0
+if is_codex_ancestor; then
+    codex_ancestor=1
+fi
+
+if [ "$codex_ancestor" -eq 1 ] && [ -z "${GH_TOKEN:-}" ] && \
+    [ "${1:-}" = "auth" ] && [ "${2:-}" = "update-token" ]; then
     fail_auth 'Codex 配下では GH_TOKEN を設定してください'
 fi
 
@@ -134,7 +140,16 @@ fi
 ensure_pass
 set_gpg_tty
 
+if [ "$codex_ancestor" -eq 1 ]; then
+    PASSWORD_STORE_GPG_OPTS="${PASSWORD_STORE_GPG_OPTS:+$PASSWORD_STORE_GPG_OPTS }--batch --pinentry-mode error"
+    export PASSWORD_STORE_GPG_OPTS
+fi
+
 if ! pass show "$token_name" >/dev/null 2>&1; then
+    if [ "$codex_ancestor" -eq 1 ]; then
+        fail_auth "$token_name を Codex の sandbox 内から復号できません。元の gh/Git コマンドを昇格実行で再試行してください（require_escalated）。"
+    fi
+
     if [ "$has_tty" -ne 1 ]; then
         fail_auth "$token_name を非対話環境から復号できません。GPG cache が使えないか、gpg-agent に接続できない可能性があります。対話端末から再実行するか GH_TOKEN を設定してください"
     fi
