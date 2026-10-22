@@ -214,8 +214,7 @@ fish-link:
 
 .PHONY: fish-plugins
 fish-plugins: fish-link
-	@fish -lc 'type -q fisher; or curl -sL https://git.io/fisher | source && fisher install jorgebucaran/fisher'
-	@fish -lc 'fisher update'
+	@fish -lc 'curl -fsSL https://raw.githubusercontent.com/jorgebucaran/fisher/main/functions/fisher.fish | source; and fisher update'
 
 #---------------------------------------------------------------------------------#
 # nvim-all
