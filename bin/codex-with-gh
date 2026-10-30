@@ -36,7 +36,7 @@ if [ -z "$token" ]; then
     exit 1
 fi
 
-for name in HOME PATH USER TERM LANG TZ TMPDIR XDG_RUNTIME_DIR TMUX TMUX_PANE; do
+for name in HOME PATH USER TERM LANG TZ TMPDIR XDG_RUNTIME_DIR TMUX TMUX_PANE SSH_CONNECTION; do
     add_environment "$name"
 done
 
