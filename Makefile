@@ -142,8 +142,21 @@ dotfiles-repo:
 # awscli
 #---------------------------------------------------------------------------------#
 .PHONY: awscli
-awscli: ## AWS CLI をインストール
+awscli: ## AWS CLI をインストール (apt では Session Manager plugin も導入)
 	curl -fsSL https://awscli.amazonaws.com/v2/install.sh | bash
+
+ifeq ($(YUM),apt)
+	@plugin_arch=$$(dpkg --print-architecture); \
+	case "$$plugin_arch" in \
+		amd64) plugin_arch=ubuntu_64bit ;; \
+		arm64) plugin_arch=ubuntu_arm64 ;; \
+		*) echo "Unsupported architecture for Session Manager plugin: $$plugin_arch" >&2; exit 1 ;; \
+	esac; \
+	plugin_tmpdir=$$(mktemp -d) || exit; \
+	trap 'rm -rf "$$plugin_tmpdir"' EXIT; \
+	curl -fsSL "https://s3.amazonaws.com/session-manager-downloads/plugin/latest/$$plugin_arch/session-manager-plugin.deb" -o "$$plugin_tmpdir/session-manager-plugin.deb"; \
+	sudo dpkg -i "$$plugin_tmpdir/session-manager-plugin.deb"
+endif
 
 #---------------------------------------------------------------------------------#
 # gh
