@@ -1,0 +1,53 @@
+#!/bin/sh
+set -eu
+
+github_host='github.com'
+store_dir=${PASSWORD_STORE_DIR:-"$HOME/.password-store"}
+
+die() {
+    echo "pass-sync: $*" >&2
+    exit 1
+}
+
+if [ "$#" -ne 0 ]; then
+    die '引数は指定できません'
+fi
+
+if [ -n "${GH_TOKEN:-}" ]; then
+    die 'GH_TOKEN が設定されています。unset してから実行してください'
+fi
+
+if [ ! -d "$store_dir/.git" ]; then
+    die "Git 管理された password-store がありません: $store_dir"
+fi
+
+if [ ! -x /usr/bin/gh ]; then
+    die '/usr/bin/gh が必要です'
+fi
+
+if ! command -v pass >/dev/null 2>&1; then
+    die 'pass コマンドが必要です'
+fi
+
+if /usr/bin/gh auth token --hostname "$github_host" >/dev/null 2>&1; then
+    die "native gh に $github_host の既存認証があります。既存認証は変更しません"
+fi
+
+echo 'pass-sync: GitHub のデバイスコード認証を開始します' >&2
+/usr/bin/gh auth login --hostname "$github_host" --web --git-protocol https --skip-ssh-key
+
+sync_token=$(/usr/bin/gh auth token --hostname "$github_host")
+if [ -z "$sync_token" ]; then
+    die 'native gh から token を取得できませんでした'
+fi
+
+native_user=$(/usr/bin/gh api user --hostname "$github_host" --jq .login)
+if [ -z "$native_user" ]; then
+    die 'native gh のログインユーザーを取得できませんでした'
+fi
+
+GH_TOKEN="$sync_token" pass git pull
+unset sync_token
+
+/usr/bin/gh auth logout --hostname "$github_host" --user "$native_user"
+echo "pass-sync: $store_dir を同期しました" >&2
