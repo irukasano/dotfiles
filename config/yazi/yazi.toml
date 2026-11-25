@@ -53,6 +53,9 @@ office = [
 convert_cp932 = [
     { run = "/home/sano/dotfiles/config/yazi/scripts/convert-csv-to-cp932.sh %1", desc = "Convert to CP932", for = "linux", block = true },
 ]
+copy_path = [
+    { run = '"$HOME/.config/yazi/scripts/copy-path.sh" %s', desc = "Copy path", for = "linux" },
+]
 reveal = [
     { run = "xdg-open %d1",         desc = "Reveal", for = "linux" },
     { run = "open -R %s1",          desc = "Reveal", for = "macos" },
@@ -73,28 +76,28 @@ download = [
 [open]
 rules = [
     # Folder
-    { url = "*/", use = [ "edit", "open", "reveal" ] },
+    { url = "*/", use = [ "edit", "open", "reveal", "copy_path" ] },
     # CSV
-    { url = "*.csv", use = [ "edit", "office", "convert_cp932", "reveal" ] },
+    { url = "*.csv", use = [ "edit", "office", "convert_cp932", "reveal", "copy_path" ] },
     # XLSX
-    { url = "*.xlsx", use = [ "office", "reveal" ] },
+    { url = "*.xlsx", use = [ "office", "reveal", "copy_path" ] },
     # Text
-    { mime = "text/*", use = [ "edit", "reveal" ] },
+    { mime = "text/*", use = [ "edit", "reveal", "copy_path" ] },
     # Image
-    { mime = "image/*", use = [ "open", "reveal", "exif" ] },
+    { mime = "image/*", use = [ "open", "reveal", "exif", "copy_path" ] },
     # Media
-    { mime = "{audio,video}/*", use = [ "play", "reveal" ] },
+    { mime = "{audio,video}/*", use = [ "play", "reveal", "copy_path" ] },
     # Archive
-    { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", use = [ "extract", "reveal" ] },
+    { mime = "application/{zip,rar,7z*,tar,gzip,xz,zstd,bzip*,lzma,compress,archive,cpio,arj,xar,ms-cab*}", use = [ "extract", "reveal", "copy_path" ] },
     # JSON
-    { mime = "application/{json,ndjson}", use = [ "edit", "reveal" ] },
-    { mime = "*/javascript", use = [ "edit", "reveal" ] },
+    { mime = "application/{json,ndjson}", use = [ "edit", "reveal", "copy_path" ] },
+    { mime = "*/javascript", use = [ "edit", "reveal", "copy_path" ] },
     # Empty file
-    { mime = "inode/empty", use = [ "edit", "reveal" ] },
+    { mime = "inode/empty", use = [ "edit", "reveal", "copy_path" ] },
     # Virtual file system
-    { mime = "vfs/{absent,stale}", use = "download" },
+    { mime = "vfs/{absent,stale}", use = [ "download", "copy_path" ] },
     # Fallback
-    { url = "*", use = [ "open", "reveal" ] },
+    { url = "*", use = [ "open", "reveal", "copy_path" ] },
 ]
 
 [tasks]
