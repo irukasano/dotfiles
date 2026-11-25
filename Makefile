@@ -349,6 +349,7 @@ codex-settings:
 	mkdir -p "$$HOME/.codex/skills" "$$HOME/.codex/bin"
 	ln -sf "$$HOME/dotfiles/config/codex/AGENTS.md" "$$HOME/.codex/AGENTS.md"
 	ln -sfn "$$HOME/dotfiles/config/codex/skills/lesson" "$$HOME/.codex/skills/lesson"
+	ln -sfn "$$HOME/dotfiles/config/codex/skills/image-artifacts" "$$HOME/.codex/skills/image-artifacts"
 	ln -sf "$$HOME/dotfiles/config/codex/bin/codex-lesson" "$$HOME/.codex/bin/codex-lesson"
 
 .PHONY: codex-lesson
